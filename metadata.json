@@ -1,0 +1,6 @@
+{
+  "name": "CalcRush - Maths Calculation Training",
+  "description": "Train your calculation speed, accuracy, mental arithmetic, and numerical fluency through progressively difficult levels and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
