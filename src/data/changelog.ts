@@ -9,14 +9,38 @@ export interface ChangelogItem {
   bugFixes: string[];
 }
 
-export const CURRENT_VERSION = '1.4.0';
+export const CURRENT_VERSION = '1.4.1';
 
 export const CHANGELOG_DATA: ChangelogItem[] = [
+  {
+    version: '1.4.1',
+    date: 'September 2026',
+    title: 'Multi-Platform Release Hotfix & Binary Validation',
+    badge: 'Latest Release',
+    summary:
+      'Stabilization hotfix replacing invalid placeholder releases with genuine compiled native binaries for Windows and Linux, updating SHA-256 integrity checksums, and accurately designating installable mobile and desktop PWA capabilities.',
+    newFeatures: [
+      'Genuine Native Binaries: Replaced placeholder artifacts with real compiled Windows PE32+ executables (85 MB) and Linux 64-bit ELF standalone executables (79 MB).',
+      'Debian Binary Package: Validated genuine Debian package (160 KB) built with dpkg-deb including desktop launcher and system menu integration.',
+      'Cryptographic Verification: Re-hashed and regenerated fresh SHA-256 checksums matching byte-for-byte with local distribution packages.',
+      'Honest Platform Labeling: Accurately labeled macOS and mobile Android browser home screen installations as high-performance PWAs rather than misleading binary downloads.',
+    ],
+    improvements: [
+      'Keypad Input Precision: Refined keypad negative minus input handling for negative mixed fractions and spacing.',
+      'Download Center Transparency: Clear distinction between compiled native executables (Windows & Linux) and browser-installed PWAs (Android & macOS).',
+      'Workflow Hardening: Enhanced release build pipeline with strict file type and non-zero binary size validation.',
+    ],
+    bugFixes: [
+      'Fixed invalid 1.6 KB placeholder Android package and eliminated invalid APK parse errors.',
+      'Fixed non-executable placeholder Windows EXE and Linux AppImage files.',
+      'Corrected Download Center download links and SHA-256 checksum displays.',
+      'Removed misleading native macOS DMG download claims in favor of Safari/Chrome Add to Dock PWA instructions.',
+    ],
+  },
   {
     version: '1.4.0',
     date: 'September 2026',
     title: 'Multi-Platform Release + Bug Audit + Changelog System',
-    badge: 'Latest Release',
     summary:
       'CalcRush is now available across Android, Windows, and Linux as standalone desktop and mobile applications, backed by a comprehensive bug audit and integrated changelog system.',
     newFeatures: [

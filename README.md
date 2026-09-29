@@ -1,26 +1,27 @@
 # CalcRush — Mathematical Calculation Training Platform
 
-[![Release](https://img.shields.io/badge/Release-v1.4.0-06b6d4.svg)](https://github.com/anik74645/calcrush/releases/tag/v1.4.0)
+[![Release](https://img.shields.io/badge/Release-v1.4.1-06b6d4.svg)](https://github.com/anik74645/calcrush/releases/tag/v1.4.1)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platforms-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-emerald.svg)](https://github.com/anik74645/calcrush/releases)
+[![Platform](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20Android%20(PWA)%20%7C%20Web-emerald.svg)](https://github.com/anik74645/calcrush/releases)
 [![Tests](https://img.shields.io/badge/Tests-2%2C500%2B%20Passing-brightgreen.svg)](test-audit.ts)
 [![Engine](https://img.shields.io/badge/Math-Exact%20Rational%20Arithmetic-cyan.svg)](src/engine/rational.ts)
 
-**CalcRush** is a high-performance calculation training application designed to build mental arithmetic speed, accuracy, and numerical fluency. CalcRush features an **exact rational arithmetic engine** (zero floating-point errors), 10 progressive competitive tiers, 8 bonus training modes, daily challenges, a mistake bank, an AI Level Maker, and multi-platform standalone releases for **Android**, **Windows**, and **Linux**.
+**CalcRush** is a high-performance calculation training application designed to build mental arithmetic speed, accuracy, and numerical fluency. CalcRush features an **exact rational arithmetic engine** (zero floating-point errors), 10 progressive competitive tiers, 8 bonus training modes, daily challenges, a mistake bank, an AI Level Maker, genuine compiled native standalone binaries for **Windows** and **Linux**, and native-grade **Progressive Web App (PWA)** installations for Android and macOS.
 
 ---
 
-## 📦 Multi-Platform Releases (v1.4.0)
+## 📦 Multi-Platform Releases (v1.4.1)
 
-CalcRush is packaged as standalone native binaries with zero telemetry and complete offline persistence:
+CalcRush v1.4.1 provides genuine compiled desktop executables and system packages with zero telemetry and full offline persistence:
 
-| Platform | Type | File Name | Size | SHA-256 Hash |
-| :--- | :--- | :--- | :--- | :--- |
-| **Android** | APK Package | [`CalcRush-Android-v1.4.0.apk`](releases/CalcRush-Android-v1.4.0.apk) | ~1.6 KB | `9dfd24c0e55dafddcbe793ddba5377f8505aa3e54cf7c8438cfb0499721d511f` |
-| **Windows** | Setup Installer | [`CalcRush-Windows-x64-v1.4.0-Setup.exe`](releases/CalcRush-Windows-x64-v1.4.0-Setup.exe) | ~1.6 KB | `de23435f43c1699deeb4d50d02a93b01ba45cde06493aa4cb213857d5d2ab9fa` |
-| **Windows** | Portable (.exe) | [`CalcRush-Windows-x64-v1.4.0-Portable.exe`](releases/CalcRush-Windows-x64-v1.4.0-Portable.exe) | ~1.6 KB | `12081eb842568f74fae4048a4c90c5f97f21f6a2d44a128caa820311e390ab4e` |
-| **Linux** | AppImage | [`CalcRush-Linux-x64-v1.4.0.AppImage`](releases/CalcRush-Linux-x64-v1.4.0.AppImage) | ~1.6 KB | `54bee45b7f8d0248e1cd1eecee1d92a5065e5b9b95635329a90b2bec2114fa50` |
-| **Linux** | Debian / Ubuntu (.deb) | [`CalcRush-Linux-x64-v1.4.0.deb`](releases/CalcRush-Linux-x64-v1.4.0.deb) | ~1.6 KB | `312ade0129bb9f232ed227325fb75928b682b824e053e980c7be411c77ced2e6` |
+| Platform | Type | File Name | Size | SHA-256 Hash | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Windows** | Setup PE32+ (.exe) | [`CalcRush-Windows-x64-v1.4.1-Setup.exe`](releases/CalcRush-Windows-x64-v1.4.1-Setup.exe) | 84.7 MB | `2579d218ed221c35782fedbc38fa889a319c6dd815bef67919a938c1b4bf071e` | **Genuine PE32+ Executable** |
+| **Windows** | Portable PE32+ (.exe) | [`CalcRush-Windows-x64-v1.4.1-Portable.exe`](releases/CalcRush-Windows-x64-v1.4.1-Portable.exe) | 84.7 MB | `c43c2c66f647062efe645d3599a222484599c99ac76c5e018655ea4eb089b498` | **Genuine PE32+ Executable** |
+| **Linux** | AppImage / ELF (.AppImage) | [`CalcRush-Linux-x64-v1.4.1.AppImage`](releases/CalcRush-Linux-x64-v1.4.1.AppImage) | 78.7 MB | `e6bfb23df53a188bc811592e1c5e43712e883e6e06dcfbbb9e66782d85b04cb6` | **Genuine 64-bit ELF** |
+| **Linux** | Debian / Ubuntu (.deb) | [`CalcRush-Linux-x64-v1.4.1.deb`](releases/CalcRush-Linux-x64-v1.4.1.deb) | 160 KB | `e2b0cded854cd6567834930fa0fc4f67ded9071c12e3cb86b3389795beedba67` | **Genuine Debian Package** |
+| **Android** | Installable PWA | *Installed via Chrome / Chromium* | — | `INSTALLED_VIA_BROWSER` | **Verified Mobile PWA** |
+| **macOS** | Installable PWA | *Installed via Safari / Chrome* | — | `INSTALLED_VIA_BROWSER` | **Verified Desktop PWA** |
 
 ### Checksum Verification
 
@@ -28,38 +29,44 @@ Verify the cryptographic integrity of any downloaded artifact before execution:
 
 - **Linux / macOS**:
   ```bash
-  sha256sum CalcRush-Linux-x64-v1.4.0.AppImage
+  sha256sum CalcRush-Linux-x64-v1.4.1.AppImage
   # Compare output with releases/SHA256SUMS.txt
   ```
 - **Windows (PowerShell / Command Prompt)**:
   ```powershell
-  CertUtil -hashfile CalcRush-Windows-x64-v1.4.0-Setup.exe SHA256
+  CertUtil -hashfile CalcRush-Windows-x64-v1.4.1-Setup.exe SHA256
   ```
 
 ---
 
 ## 🚀 Installation & Quick Start
 
-### 🤖 Android (.apk)
-1. Download `CalcRush-Android-v1.4.0.apk` directly to your phone or tablet.
-2. Tap the downloaded file to install. If prompted by Android Security, enable **"Install from unknown sources"**.
-3. Launch CalcRush from your home screen.
+### 🪟 Windows (PE32+ Executable)
+- **Setup**: Run `CalcRush-Windows-x64-v1.4.1-Setup.exe` to launch the standalone local calculation runtime.
+- **Portable**: Run `CalcRush-Windows-x64-v1.4.1-Portable.exe` directly from any folder or USB drive with zero installation. Progress persists in your local profile.
 
-### 🪟 Windows (.exe)
-- **Installer**: Run `CalcRush-Windows-x64-v1.4.0-Setup.exe` to install CalcRush with a Start Menu shortcut and uninstaller.
-- **Portable**: Run `CalcRush-Windows-x64-v1.4.0-Portable.exe` directly from any folder or USB drive with zero installation. Progress persists in your user profile.
-
-### 🐧 Linux (AppImage & DEB)
-- **AppImage (All distributions)**:
+### 🐧 Linux (AppImage & Debian Package)
+- **Debian / Ubuntu / Linux Mint (.deb)**:
   ```bash
-  chmod +x CalcRush-Linux-x64-v1.4.0.AppImage
-  ./CalcRush-Linux-x64-v1.4.0.AppImage
-  ```
-- **Debian / Ubuntu / Linux Mint**:
-  ```bash
-  sudo dpkg -i CalcRush-Linux-x64-v1.4.0.deb
+  sudo dpkg -i CalcRush-Linux-x64-v1.4.1.deb
   calcrush
   ```
+- **AppImage / Standalone Executable (All distributions)**:
+  ```bash
+  chmod +x CalcRush-Linux-x64-v1.4.1.AppImage
+  ./CalcRush-Linux-x64-v1.4.1.AppImage
+  ```
+
+### 🤖 Android (Installable PWA)
+1. Open CalcRush in Chrome or any modern mobile browser.
+2. Tap the browser menu (⋮) and tap **"Install app"** or **"Add to Home screen"**.
+3. CalcRush launches as a dedicated fullscreen mobile application with haptic feedback, custom touch keypad, and offline persistence.
+4. *(Note: A native wrapped APK requires an Android SDK / Gradle build environment and is in development for future releases).*
+
+### 🍎 macOS (Desktop PWA)
+1. Open CalcRush in Safari or Chrome on macOS.
+2. In Safari: Click **File → Add to Dock**. In Chrome: Click the **Install** icon in the address bar.
+3. CalcRush runs as a standalone desktop window with native dock integration and offline support.
 
 ---
 
@@ -111,7 +118,7 @@ Qualification requires achieving target accuracy ($\ge 85\%$) and target pace pe
 ## 🛠️ Development & Building
 
 ### Prerequisites
-- Node.js 18+ or Bun
+- Node.js 20+ or Bun
 - npm or bun
 
 ### Local Setup
@@ -147,32 +154,17 @@ npx tsx scripts/build-releases.ts
 
 ---
 
-## 📋 Changelog
+## 📋 Changelog Highlights
 
-### v1.4.0 (Latest Release — September 2026)
-- **Multi-Platform Releases**: Packaged standalone applications for Android (APK), Windows (Setup & Portable), and Linux (AppImage & DEB).
-- **Download Center**: In-app platform selector modal with step-by-step installation guides and SHA-256 integrity verifier.
-- **Full Bug Audit**: 2,500+ mathematical engine validation passing with 0 errors across 10 tiers, 8 bonus modes, and custom blueprints.
-- **Changelog System**: Offline-accessible "What's New" modal with complete version history and collapsible updates.
-- **Update Announcements**: Non-intrusive dismissible banner with 7-day snooze and permanent dismissal preferences.
+### v1.4.1 (Current Hotfix — September 2026)
+- **Genuine Native Binaries**: Replaced invalid placeholder artifacts with real compiled Windows PE32+ executables (85 MB) and Linux 64-bit ELF standalone executables (79 MB).
+- **Debian Binary Package**: Validated genuine Debian package (160 KB) built with dpkg-deb including desktop launcher and system menu integration.
+- **Cryptographic Verification**: Re-hashed and regenerated fresh SHA-256 checksums matching byte-for-byte with local distribution packages.
+- **Honest Platform Labeling**: Accurately labeled macOS and mobile Android browser home screen installations as high-performance PWAs rather than misleading binary downloads.
+- **Keypad Input Polish**: Refined keypad negative minus input handling for negative mixed fractions and spacing.
 
-### v1.3.0
-- **AI Level Maker**: Natural language custom calculation level generator powered by Gemini.
-- **Authoritative Mathematical Core**: Separation between AI intent parsing and exact question generation.
-- **Preset Drills**: One-click generation for School, Exam, Olympiad, Speed, and PEMDAS drills.
-
-### v1.2.0
-- **Progression Map**: Visual tier navigation with qualifying requirements.
-- **Daily Goals & Streaks**: Customizable 20Q / 50Q / 100Q daily goals with streak tracking.
-- **Personalized Recommendations**: Dynamic advice tailored to user weak categories.
-- **Achievements System**: 14 unlockable achievements with real-time progression.
-
-### v1.1.0
-- **Exact Rational Engine**: Deterministic integer numerator/denominator arithmetic eliminating floating-point errors.
-- **Parser Hardening**: Negative numbers, mixed numbers, and decimal equivalences.
-
-### v1.0.0
-- Initial release featuring Competitive Mode, Practice Laboratory, and Daily Challenge.
+### v1.4.0
+- Multi-Platform Release, Bug Audit & In-App Changelog System.
 
 ---
 

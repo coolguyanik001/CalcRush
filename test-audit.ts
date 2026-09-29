@@ -21,7 +21,7 @@ import {
 } from './src/engine/generator';
 import { AILevelBlueprint, Question, SessionSummary } from './src/types';
 
-console.log('=== CALCRUSH PHASE 1.4 AUDIT & STABILIZATION TEST SUITE ===\n');
+console.log('=== CALCRUSH VERSION 1.4.1 AUDIT & STABILIZATION TEST SUITE ===\n');
 
 let totalTests = 0;
 let passedTests = 0;

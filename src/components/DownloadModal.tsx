@@ -91,10 +91,10 @@ export const DownloadModal: React.FC = () => {
         {/* Platform Tabs */}
         <div className="flex border-b border-[#202833] bg-[#080B10]/50 px-6 pt-3 gap-2 overflow-x-auto">
           {[
-            { id: 'android', label: 'Android', icon: '🤖', sub: 'APK Package' },
-            { id: 'windows', label: 'Windows', icon: '🪟', sub: 'Setup & Portable' },
-            { id: 'linux', label: 'Linux', icon: '🐧', sub: 'AppImage & DEB' },
-            { id: 'macos', label: 'macOS', icon: '🍎', sub: 'Safari / PWA' },
+            { id: 'windows', label: 'Windows', icon: '🪟', sub: 'Native PE32+' },
+            { id: 'linux', label: 'Linux', icon: '🐧', sub: 'DEB & AppImage' },
+            { id: 'android', label: 'Android', icon: '🤖', sub: 'Installable PWA' },
+            { id: 'macos', label: 'macOS', icon: '🍎', sub: 'Installable PWA' },
           ].map((tab) => {
             const isActive = selectedPlatform === tab.id;
             return (
@@ -146,31 +146,36 @@ export const DownloadModal: React.FC = () => {
                       <div className="flex items-center space-x-3 text-xs text-[#8B95A5]">
                         <span className="font-mono text-[11px] text-[#F5F7FA]">{art.filename}</span>
                         {art.sizeBytes > 0 && (
-                          <span>{(art.sizeBytes / 1024).toFixed(1)} KB</span>
+                          <span>
+                            {art.sizeBytes > 1024 * 1024
+                              ? `${(art.sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+                              : `${(art.sizeBytes / 1024).toFixed(1)} KB`}
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2 shrink-0">
-                    {art.platform !== 'macos' ? (
+                    {art.status === 'native' ? (
                       <button
                         onClick={() => handleDownload(art.filename)}
                         className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-xs transition-all shadow-md shadow-cyan-500/15"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>Download</span>
+                        <span>Download Binary</span>
                       </button>
                     ) : (
-                      <a
-                        href={GITHUB_RELEASES_URL}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        onClick={() => {
+                          const instructions = document.getElementById(`instructions-${art.id}`);
+                          if (instructions) instructions.scrollIntoView({ behavior: 'smooth' });
+                        }}
                         className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-[#0D1219] text-cyan-400 border border-cyan-500/30 text-xs font-semibold hover:bg-cyan-500/10 transition-colors"
                       >
-                        <span>GitHub Build</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                        <Sparkles className="w-3 h-3" />
+                        <span>Install PWA Guide</span>
+                      </button>
                     )}
                   </div>
                 </div>

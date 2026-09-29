@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-and-release:
-    name: Build & Publish Release Artifacts
+    name: Build & Validate Release Artifacts
     runs-on: ubuntu-latest
 
     steps:
@@ -24,11 +24,19 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Setup Bun (for native executable compilation)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Mathematical Engine Audit
+      - name: Run Mathematical Engine 2,500+ Calculations Audit
         run: npx tsx test-audit.ts
+
+      - name: TypeScript Linting Check
+        run: npm run lint
 
       - name: Build Web Production Assets
         run: npm run build
@@ -36,19 +44,36 @@ jobs:
       - name: Generate Multi-Platform Release Artifacts
         run: npx tsx scripts/build-releases.ts
 
+      - name: Strict Artifact Binary Validation
+        run: |
+          echo "Verifying generated release packages..."
+          test -s releases/CalcRush-Windows-x64-v1.4.1-Setup.exe || { echo "Missing Windows Setup EXE"; exit 1; }
+          test -s releases/CalcRush-Windows-x64-v1.4.1-Portable.exe || { echo "Missing Windows Portable EXE"; exit 1; }
+          test -s releases/CalcRush-Linux-x64-v1.4.1.AppImage || { echo "Missing Linux AppImage"; exit 1; }
+          test -s releases/CalcRush-Linux-x64-v1.4.1.deb || { echo "Missing Linux DEB package"; exit 1; }
+          test -s releases/SHA256SUMS.txt || { echo "Missing SHA256SUMS.txt"; exit 1; }
+
+          # Check binary signatures (must NOT be HTML placeholder)
+          file releases/CalcRush-Windows-x64-v1.4.1-Setup.exe | grep -q "PE32+" || { echo "Invalid Windows EXE format"; exit 1; }
+          file releases/CalcRush-Linux-x64-v1.4.1.AppImage | grep -q "ELF" || { echo "Invalid Linux AppImage format"; exit 1; }
+          file releases/CalcRush-Linux-x64-v1.4.1.deb | grep -q "Debian binary package" || { echo "Invalid DEB format"; exit 1; }
+
+          # Verify SHA256 checksums file
+          cd releases && sha256sum -c SHA256SUMS.txt && cd ..
+          echo "✓ All release artifacts passed strict binary format and integrity checks!"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "CalcRush ${{ github.ref_name }} — Multi-Platform Release"
-          body_path: RELEASE_NOTES.md
+          body_path: RELEASE_NOTES_v1.4.1.md
           draft: false
           prerelease: false
           files: |
-            releases/CalcRush-Android-v1.4.0.apk
-            releases/CalcRush-Windows-x64-v1.4.0-Setup.exe
-            releases/CalcRush-Windows-x64-v1.4.0-Portable.exe
-            releases/CalcRush-Linux-x64-v1.4.0.AppImage
-            releases/CalcRush-Linux-x64-v1.4.0.deb
+            releases/CalcRush-Windows-x64-v1.4.1-Setup.exe
+            releases/CalcRush-Windows-x64-v1.4.1-Portable.exe
+            releases/CalcRush-Linux-x64-v1.4.1.AppImage
+            releases/CalcRush-Linux-x64-v1.4.1.deb
             releases/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

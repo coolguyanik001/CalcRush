@@ -358,13 +358,16 @@ export const CalculationWorkspace: React.FC<WorkspaceProps> = ({
     }
   };
 
-  // Fix 15: Mobile keypad input handler with space key for mixed numbers
+  // Mobile keypad input handler with space key for mixed numbers
   const handleKeypadPress = (char: string) => {
     if (feedbackState !== 'idle') return;
     setInputValue((prev) => {
       if (char === '.' && prev.includes('.')) return prev;
       if (char === '/' && prev.includes('/')) return prev;
-      if (char === '-' && prev.length > 0) return prev;
+      if (char === '-') {
+        // Minus allowed at start or right after a space (e.g. "-1/2" or "-1 1/2")
+        if (prev.length > 0 && !prev.endsWith(' ')) return prev;
+      }
       if (char === ' ') {
         // Space only allowed after whole number and before fraction (e.g. "1 " before "1/2")
         if (prev.length === 0 || prev.includes(' ') || prev.includes('/')) return prev;
