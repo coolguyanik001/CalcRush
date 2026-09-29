@@ -63,42 +63,6 @@ Verify the cryptographic integrity of any downloaded artifact before execution:
 
 ---
 
-## 📤 How to Upload Setup Files to GitHub Releases
-
-All release files are located in the [`releases/`](releases/) directory:
-- `releases/CalcRush-Android-v1.4.0.apk`
-- `releases/CalcRush-Windows-x64-v1.4.0-Setup.exe`
-- `releases/CalcRush-Windows-x64-v1.4.0-Portable.exe`
-- `releases/CalcRush-Linux-x64-v1.4.0.AppImage`
-- `releases/CalcRush-Linux-x64-v1.4.0.deb`
-- `releases/SHA256SUMS.txt`
-
-### Method 1: Using GitHub Web UI (Recommended)
-1. Navigate to: [https://github.com/anik74645/calcrush/releases/new](https://github.com/anik74645/calcrush/releases/new)
-2. **Tag version**: `v1.4.0` (select target: `master`)
-3. **Release title**: `CalcRush v1.4.0 — Multi-Platform Release + Bug Fixes + Changelog System`
-4. **Description**: Copy and paste the release notes from [RELEASE_NOTES.md](RELEASE_NOTES.md).
-5. Under **"Attach binaries by dropping them here"**, drag and drop all 6 files from the `releases/` directory.
-6. Check **"Set as the latest release"** and click **"Publish release"**.
-
-### Method 2: Using GitHub CLI (`gh`)
-If you have GitHub CLI installed and authenticated:
-```bash
-gh release create v1.4.0 releases/* \
-  --title "CalcRush v1.4.0 — Multi-Platform Release" \
-  --notes-file RELEASE_NOTES.md
-```
-
-### Method 3: Automated via GitHub Actions
-This repository includes a GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml). When you push a git tag:
-```bash
-git tag v1.4.0
-git push origin v1.4.0
-```
-GitHub Actions will automatically create the release and upload all artifacts.
-
----
-
 ## 🧠 Core Systems & Features
 
 ### 1. ⚡ Exact Rational Arithmetic Core
