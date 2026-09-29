@@ -11,6 +11,10 @@ import {
   Flame,
   Infinity,
   HelpCircle,
+  Target,
+  Gauge,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BonusModeDef, DifficultyMode, SkillCategory } from '../types';
@@ -76,21 +80,36 @@ const BONUS_MODES: BonusModeDef[] = [
 ];
 
 export const PracticeView: React.FC = () => {
-  const { startSession, bonusRecords, mistakes, setIsMistakeBankModalOpen } = useApp();
+  const { user, startSession, bonusRecords, mistakes, setIsMistakeBankModalOpen, weakArea, setActiveView } = useApp();
+  const currentRank = user?.competitiveLevel || 1;
 
   // Custom Practice Session Config
-  const [selectedLevel, setSelectedLevel] = useState<number>(1);
+  const [selectedLevel, setSelectedLevel] = useState<number>(currentRank);
   const [sessionLength, setSessionLength] = useState<number>(20); // 10, 20, 50, 100, 0 (unlimited)
-  const [hasTimer, setHasTimer] = useState<boolean>(true);
+  const [timerMode, setTimerMode] = useState<'normal' | 'off' | 'pace_2' | 'pace_3' | 'pace_5'>('normal');
   const [difficulty, setDifficulty] = useState<DifficultyMode>('normal');
   const [categoryFilter, setCategoryFilter] = useState<SkillCategory | 'all'>('all');
 
   const handleStartCustomPractice = () => {
+    let targetPace: number | undefined;
+    let hasTimer = true;
+
+    if (timerMode === 'off') {
+      hasTimer = false;
+    } else if (timerMode === 'pace_2') {
+      targetPace = 2.0;
+    } else if (timerMode === 'pace_3') {
+      targetPace = 3.0;
+    } else if (timerMode === 'pace_5') {
+      targetPace = 5.0;
+    }
+
     startSession({
       mode: 'practice',
       level: selectedLevel,
       questionCount: sessionLength,
       hasTimer,
+      targetPace,
       difficulty,
       category: categoryFilter,
     });
@@ -105,6 +124,50 @@ export const PracticeView: React.FC = () => {
       bonusType: bonus.id,
       survivalMode: bonus.id === 'B7',
     });
+  };
+
+  // Quick Drill Presets Handlers
+  const handleLaunchPreset = (type: 'speed_blitz' | 'precision_20' | 'fractions' | 'decimals' | 'weakest') => {
+    if (type === 'speed_blitz') {
+      startSession({
+        mode: 'practice',
+        level: currentRank,
+        questionCount: 10,
+        hasTimer: true,
+        targetPace: 2.0,
+      });
+    } else if (type === 'precision_20') {
+      startSession({
+        mode: 'practice',
+        level: currentRank,
+        questionCount: 20,
+        hasTimer: false,
+      });
+    } else if (type === 'fractions') {
+      startSession({
+        mode: 'practice',
+        level: 4,
+        questionCount: 20,
+        hasTimer: true,
+        category: 'fractions',
+      });
+    } else if (type === 'decimals') {
+      startSession({
+        mode: 'practice',
+        level: 3,
+        questionCount: 50,
+        hasTimer: true,
+        category: 'decimals',
+      });
+    } else if (type === 'weakest') {
+      startSession({
+        mode: 'practice',
+        level: currentRank,
+        questionCount: 20,
+        hasTimer: false,
+        category: (weakArea?.category as any) || 'all',
+      });
+    }
   };
 
   const renderBonusRecordValue = (
@@ -139,7 +202,7 @@ export const PracticeView: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-[#8B95A5]">
-            All 10 levels and 8 bonus modes unlocked. Zero rating pressure.
+            Targeted skill drills, tempo tuning, and 8 bonus challenge modes. Zero rating pressure.
           </p>
         </div>
 
@@ -155,11 +218,142 @@ export const PracticeView: React.FC = () => {
         )}
       </div>
 
+      {/* 🤖 AI Level Maker Banner */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#111720] via-cyan-950/20 to-[#111720] border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <span className="text-base">🤖</span>
+            <h3 className="font-bold text-sm sm:text-base text-[#F5F7FA]">AI Level Maker</h3>
+            <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold uppercase tracking-wider">
+              Natural Language
+            </span>
+          </div>
+          <p className="text-xs text-[#8B95A5] max-w-xl">
+            Prompt any custom training drill—from Olympiad rational arithmetic to rapid mental math blitzes.
+          </p>
+        </div>
+        <button
+          onClick={() => setActiveView('ai-maker')}
+          className="py-2.5 px-5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 transition-all shadow-md shadow-cyan-500/20 shrink-0 self-start sm:self-auto cursor-pointer"
+        >
+          <span>Open AI Level Maker</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* QUICK DRILL PRESETS */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[#8B95A5]">
+            Quick Drill Presets
+          </h2>
+          <span className="text-[11px] text-[#8B95A5]">1-Click Launch</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          {/* Preset 1: Speed Blitz */}
+          <button
+            onClick={() => handleLaunchPreset('speed_blitz')}
+            className="p-3.5 rounded-xl bg-[#111720] border border-[#202833] hover:border-cyan-500/40 text-left transition-all group flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-lg">⚡</span>
+              <h3 className="text-xs font-bold text-[#F5F7FA] mt-1.5 group-hover:text-cyan-300 transition-colors">
+                Speed Blitz
+              </h3>
+              <p className="text-[10px] text-[#8B95A5] mt-0.5">10Q · 2.0s tempo</p>
+            </div>
+            <span className="text-[10px] text-cyan-400 font-semibold mt-2.5 flex items-center space-x-1">
+              <span>Start</span>
+              <ArrowRight className="w-3 h-3" />
+            </span>
+          </button>
+
+          {/* Preset 2: Precision 20 */}
+          <button
+            onClick={() => handleLaunchPreset('precision_20')}
+            className="p-3.5 rounded-xl bg-[#111720] border border-[#202833] hover:border-cyan-500/40 text-left transition-all group flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-lg">🎯</span>
+              <h3 className="text-xs font-bold text-[#F5F7FA] mt-1.5 group-hover:text-cyan-300 transition-colors">
+                Precision 20
+              </h3>
+              <p className="text-[10px] text-[#8B95A5] mt-0.5">20Q · Untimed</p>
+            </div>
+            <span className="text-[10px] text-cyan-400 font-semibold mt-2.5 flex items-center space-x-1">
+              <span>Start</span>
+              <ArrowRight className="w-3 h-3" />
+            </span>
+          </button>
+
+          {/* Preset 3: Fractions Workout */}
+          <button
+            onClick={() => handleLaunchPreset('fractions')}
+            className="p-3.5 rounded-xl bg-[#111720] border border-[#202833] hover:border-cyan-500/40 text-left transition-all group flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-lg">📐</span>
+              <h3 className="text-xs font-bold text-[#F5F7FA] mt-1.5 group-hover:text-cyan-300 transition-colors">
+                Fractions
+              </h3>
+              <p className="text-[10px] text-[#8B95A5] mt-0.5">20Q · L4 Fractions</p>
+            </div>
+            <span className="text-[10px] text-cyan-400 font-semibold mt-2.5 flex items-center space-x-1">
+              <span>Start</span>
+              <ArrowRight className="w-3 h-3" />
+            </span>
+          </button>
+
+          {/* Preset 4: Decimals Marathon */}
+          <button
+            onClick={() => handleLaunchPreset('decimals')}
+            className="p-3.5 rounded-xl bg-[#111720] border border-[#202833] hover:border-cyan-500/40 text-left transition-all group flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-lg">🔢</span>
+              <h3 className="text-xs font-bold text-[#F5F7FA] mt-1.5 group-hover:text-cyan-300 transition-colors">
+                Decimals
+              </h3>
+              <p className="text-[10px] text-[#8B95A5] mt-0.5">50Q · L3 Decimals</p>
+            </div>
+            <span className="text-[10px] text-cyan-400 font-semibold mt-2.5 flex items-center space-x-1">
+              <span>Start</span>
+              <ArrowRight className="w-3 h-3" />
+            </span>
+          </button>
+
+          {/* Preset 5: Weakest Area Drill */}
+          <button
+            onClick={() => handleLaunchPreset('weakest')}
+            className="p-3.5 rounded-xl bg-[#111720] border border-amber-500/30 hover:border-amber-500/50 text-left transition-all group flex flex-col justify-between col-span-2 sm:col-span-1"
+          >
+            <div>
+              <span className="text-lg">🩹</span>
+              <h3 className="text-xs font-bold text-[#F5F7FA] mt-1.5 group-hover:text-amber-300 transition-colors">
+                Weakest Area
+              </h3>
+              <p className="text-[10px] text-amber-400/90 capitalize mt-0.5">
+                {weakArea ? `${weakArea.category} (${weakArea.accuracy}%)` : 'Targeted Drill'}
+              </p>
+            </div>
+            <span className="text-[10px] text-amber-400 font-semibold mt-2.5 flex items-center space-x-1">
+              <span>Start</span>
+              <ArrowRight className="w-3 h-3" />
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* SECTION 1: CUSTOM PRACTICE CONFIGURATOR */}
       <div className="p-5 sm:p-6 rounded-2xl bg-[#111720] border border-[#202833] space-y-6">
-        <h2 className="text-base font-bold text-[#F5F7FA] flex items-center space-x-2">
-          <span>Custom Training Session</span>
-        </h2>
+        <div className="flex items-center justify-between border-b border-[#202833]/80 pb-3">
+          <h2 className="text-base font-bold text-[#F5F7FA] flex items-center space-x-2">
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <span>Custom Drill Configurator</span>
+          </h2>
+          <span className="text-xs text-[#8B95A5]">Full Parameter Control</span>
+        </div>
 
         {/* 1. Level Selector (L1 - L10) */}
         <div>
@@ -183,10 +377,42 @@ export const PracticeView: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Session Length */}
+        {/* 2. Operation / Category Filter */}
         <div>
           <label className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider block mb-2">
-            Questions Count
+            Operation / Focus Category
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { val: 'all', label: 'All Operations' },
+              { val: 'addition', label: 'Addition' },
+              { val: 'subtraction', label: 'Subtraction' },
+              { val: 'multiplication', label: 'Multiplication' },
+              { val: 'division', label: 'Division' },
+              { val: 'decimals', label: 'Decimals' },
+              { val: 'fractions', label: 'Fractions' },
+              { val: 'negative', label: 'Negatives' },
+              { val: 'multi-step', label: 'Multi-Step' },
+            ].map((cat) => (
+              <button
+                key={cat.val}
+                onClick={() => setCategoryFilter(cat.val as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  categoryFilter === cat.val
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                    : 'bg-[#0D1219] text-[#8B95A5] hover:text-[#F5F7FA] border border-[#202833]'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Session Length */}
+        <div>
+          <label className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider block mb-2">
+            Question Count
           </label>
           <div className="grid grid-cols-5 gap-2">
             {[
@@ -211,140 +437,132 @@ export const PracticeView: React.FC = () => {
           </div>
         </div>
 
-        {/* 3. Settings Grid: Timer, Difficulty, Category */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-          {/* Timer */}
-          <div>
-            <label className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider block mb-2">
-              Timer
-            </label>
-            <div className="grid grid-cols-2 gap-2">
+        {/* 4. Timer & Pace Selector */}
+        <div>
+          <label className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider block mb-2">
+            Timer & Target Tempo
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {[
+              { val: 'normal', label: 'Free Timer' },
+              { val: 'off', label: 'Untimed' },
+              { val: 'pace_2', label: '2.0s Pace' },
+              { val: 'pace_3', label: '3.0s Pace' },
+              { val: 'pace_5', label: '5.0s Pace' },
+            ].map((t) => (
               <button
-                onClick={() => setHasTimer(true)}
+                key={t.val}
+                onClick={() => setTimerMode(t.val as any)}
                 className={`py-2 rounded-lg text-xs font-medium transition-all ${
-                  hasTimer
+                  timerMode === t.val
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'bg-[#0D1219] text-[#8B95A5] border border-[#202833]'
+                    : 'bg-[#0D1219] text-[#8B95A5] hover:text-[#F5F7FA] border border-[#202833]'
                 }`}
               >
-                On
+                {t.label}
               </button>
-              <button
-                onClick={() => setHasTimer(false)}
-                className={`py-2 rounded-lg text-xs font-medium transition-all ${
-                  !hasTimer
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'bg-[#0D1219] text-[#8B95A5] border border-[#202833]'
-                }`}
-              >
-                Off (Calm)
-              </button>
-            </div>
+            ))}
           </div>
+        </div>
 
-          {/* Difficulty */}
-          <div>
-            <label className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider block mb-2">
-              Difficulty Mode
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {(['normal', 'hard', 'adaptive'] as const).map((diff) => (
-                <button
-                  key={diff}
-                  onClick={() => setDifficulty(diff)}
-                  className={`py-2 rounded-lg text-[11px] font-medium capitalize transition-all ${
-                    difficulty === diff
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                      : 'bg-[#0D1219] text-[#8B95A5] border border-[#202833]'
+        {/* 5. Difficulty Engine */}
+        <div>
+          <label className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider block mb-2">
+            Difficulty Dynamic
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 'normal', title: 'Normal', desc: 'Standard level range' },
+              { id: 'hard', title: 'Hard', desc: 'Upper complexity bounds' },
+              { id: 'adaptive', title: 'Adaptive', desc: 'Real-time level adjustment' },
+            ].map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setDifficulty(d.id as DifficultyMode)}
+                className={`p-2.5 rounded-xl border text-left transition-all ${
+                  difficulty === d.id
+                    ? 'bg-cyan-500/10 border-cyan-500/40'
+                    : 'bg-[#0D1219] border-[#202833] hover:border-[#2f3b4c]'
+                }`}
+              >
+                <div
+                  className={`text-xs font-bold ${
+                    difficulty === d.id ? 'text-cyan-400' : 'text-[#F5F7FA]'
                   }`}
                 >
-                  {diff}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider block mb-2">
-              Skill Focus
-            </label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as any)}
-              className="w-full py-2 px-3 rounded-lg bg-[#0D1219] border border-[#202833] text-xs text-[#F5F7FA] outline-none focus:border-cyan-400 capitalize"
-            >
-              <option value="all">All Topics (Default)</option>
-              <option value="addition">Addition</option>
-              <option value="subtraction">Subtraction</option>
-              <option value="multiplication">Multiplication</option>
-              <option value="division">Division</option>
-              <option value="decimals">Decimals</option>
-              <option value="fractions">Fractions</option>
-              <option value="negative">Negative Numbers</option>
-              <option value="multi-step">Multi-Step</option>
-            </select>
+                  {d.title}
+                </div>
+                <div className="text-[10px] text-[#8B95A5] mt-0.5">{d.desc}</div>
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Start Button */}
         <button
           onClick={handleStartCustomPractice}
-          className="w-full py-3.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#080B10] font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-md shadow-cyan-500/20"
+          className="w-full py-3.5 px-6 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#080B10] font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-cyan-500/20"
         >
           <Play className="w-4 h-4 fill-current" />
-          <span>Launch Practice Session</span>
+          <span>START PRACTICE SESSION</span>
         </button>
       </div>
 
-      {/* SECTION 2: MIXED BONUS LEVELS */}
+      {/* SECTION 2: 8 BONUS CHALLENGE MODES */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-base font-bold text-[#F5F7FA]">Mixed Bonus Levels</h2>
-          <p className="text-xs text-[#8B95A5]">
-            Specialized challenges to test endurance, speed, and complex rational calculations.
-          </p>
+          <h2 className="text-base font-bold text-[#F5F7FA]">8 Bonus Challenge Modes</h2>
+          <p className="text-xs text-[#8B95A5]">Specialized endurance and agility trials.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {BONUS_MODES.map((bonus) => {
-            const record = bonusRecords[bonus.id];
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {BONUS_MODES.map((b) => {
+            const rec = bonusRecords[b.id];
+            const recordVal = renderBonusRecordValue(b.id, rec);
+
             return (
               <div
-                key={bonus.id}
-                className="p-4 rounded-xl bg-[#111720] border border-[#202833] hover:border-cyan-500/40 flex flex-col justify-between transition-all group"
+                key={b.id}
+                onClick={() => handleStartBonus(b)}
+                className="p-4 sm:p-5 rounded-2xl bg-[#111720] border border-[#202833] hover:border-cyan-500/40 cursor-pointer transition-all group flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl">{bonus.icon}</span>
-                    <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#0D1219] border border-[#202833] text-cyan-400 font-math">
-                      {bonus.id}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl">{b.icon}</span>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
+                          BONUS {b.id}
+                        </span>
+                        <h3 className="font-bold text-sm sm:text-base text-[#F5F7FA] group-hover:text-cyan-300 transition-colors">
+                          {b.title}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[10px] text-[#8B95A5] block">
+                        {b.bestRecordLabel}
+                      </span>
+                      <span className="text-xs font-bold font-math text-[#F5F7FA]">
+                        {recordVal}
+                      </span>
+                    </div>
                   </div>
 
-                  <h3 className="font-bold text-sm text-[#F5F7FA] group-hover:text-cyan-300 transition-colors">
-                    {bonus.title}
-                  </h3>
-                  <p className="text-[11px] text-[#8B95A5] mt-1 leading-relaxed">
-                    {bonus.description}
+                  <p className="text-xs text-[#8B95A5] leading-relaxed mt-2">
+                    {b.description}
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-[#202833]/60 mt-3 space-y-2">
-                  <div className="flex justify-between items-center text-[10px] text-[#8B95A5]">
-                    <span>{bonus.bestRecordLabel}</span>
-                    <span className="font-math font-semibold text-[#F5F7FA]">
-                      {renderBonusRecordValue(bonus.id, record)}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => handleStartBonus(bonus)}
-                    className="w-full py-2 rounded-lg bg-[#0D1219] hover:bg-cyan-500 text-[#F5F7FA] hover:text-[#080B10] border border-[#202833] hover:border-cyan-400 text-xs font-semibold flex items-center justify-center space-x-1 transition-all"
-                  >
+                <div className="mt-4 pt-3 border-t border-[#202833]/80 flex items-center justify-between text-xs">
+                  <span className="text-[#8B95A5]">
+                    {b.id === 'B6' || b.id === 'B7' || b.id === 'B8' ? 'Continuous stream' : '25 questions'}
+                  </span>
+                  <span className="font-bold text-cyan-400 group-hover:translate-x-0.5 transition-transform flex items-center space-x-1">
                     <span>Play</span>
-                    <Zap className="w-3 h-3" />
-                  </button>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
             );

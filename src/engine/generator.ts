@@ -1,5 +1,6 @@
-import { LevelDef, Question, SkillCategory } from '../types';
+import { AILevelBlueprint, LevelDef, Question, SkillCategory } from '../types';
 import {
+  checkAnswerMatches,
   createRational,
   generateCanonicalAndAcceptable,
   rationalAdd,
@@ -1020,5 +1021,103 @@ export function generateDailyChallengeQuestions(): Question[] {
     q.id = `daily_${dateStr}_${i + 1}`;
     questions.push(q);
   }
+  return questions;
+}
+
+/**
+ * Generates and validates questions from an AI-specified level blueprint.
+ * Validates every question through exact rational arithmetic checks.
+ */
+export function generateQuestionsFromBlueprint(blueprint: AILevelBlueprint): Question[] {
+  const targetCount = Math.max(5, Math.min(50, blueprint.questionCount || 20));
+  const difficulty = Math.max(1, Math.min(10, blueprint.difficulty || 5));
+  const questions: Question[] = [];
+  const seenExpressions = new Set<string>();
+
+  // Determine suitable source levels based on blueprint features and difficulty
+  const candidateLevels: number[] = [];
+
+  if (blueprint.features.pemdas || blueprint.features.parentheses) {
+    if (difficulty >= 8) candidateLevels.push(8, 9, 10);
+    else candidateLevels.push(6, 8);
+  }
+
+  if (blueprint.features.negativeNumbers) {
+    if (difficulty >= 7) candidateLevels.push(7, 9);
+    else candidateLevels.push(7);
+  }
+
+  if (blueprint.features.fractions && blueprint.features.decimals) {
+    candidateLevels.push(5, 6);
+  } else if (blueprint.features.fractions) {
+    candidateLevels.push(4, 5);
+  } else if (blueprint.features.decimals) {
+    candidateLevels.push(3);
+  }
+
+  // If candidate levels still empty, derive directly from difficulty
+  if (candidateLevels.length === 0) {
+    candidateLevels.push(difficulty);
+    if (difficulty > 1) candidateLevels.push(difficulty - 1);
+    if (difficulty < 10) candidateLevels.push(difficulty + 1);
+  }
+
+  // Map operations if specific category needed
+  let categoryOverride: SkillCategory | undefined;
+  if (blueprint.operations.length === 1) {
+    categoryOverride = blueprint.operations[0] as SkillCategory;
+  }
+
+  for (let i = 0; i < targetCount; i++) {
+    let question: Question | null = null;
+    let attempts = 0;
+
+    while (attempts < 15) {
+      attempts++;
+      const chosenLevel = pickRandom(candidateLevels);
+      const rawQuestion = generateQuestionForLevel(chosenLevel, categoryOverride);
+
+      // Validation pipeline:
+      // 1. Expression must be non-empty and non-duplicate
+      if (!rawQuestion.expression || seenExpressions.has(rawQuestion.expression)) {
+        continue;
+      }
+
+      // 2. Rational value must be finite and denominator != 0
+      const rVal = rawQuestion.rationalValue;
+      if (!rVal || isNaN(rVal.num) || isNaN(rVal.den) || rVal.den === 0 || !isFinite(rVal.num) || !isFinite(rVal.den)) {
+        continue;
+      }
+
+      // 3. Exact rational engine check
+      if (!checkAnswerMatches(rawQuestion.correctAnswer, rVal)) {
+        continue;
+      }
+
+      // 4. Acceptable answers must include canonical
+      if (!rawQuestion.acceptableAnswers || rawQuestion.acceptableAnswers.length === 0) {
+        continue;
+      }
+
+      // 5. Check timeLimit / targetPace if blueprint is speed-oriented
+      if (blueprint.targetPace) {
+        rawQuestion.timeLimit = blueprint.targetPace;
+      }
+
+      rawQuestion.id = `ai_q_${Date.now()}_${i + 1}_${Math.random().toString(36).substring(2, 6)}`;
+      question = rawQuestion;
+      break;
+    }
+
+    // Safe fallback if loop exhausted
+    if (!question) {
+      question = generateQuestionForLevel(difficulty);
+      question.id = `ai_fb_${Date.now()}_${i + 1}`;
+    }
+
+    seenExpressions.add(question.expression);
+    questions.push(question);
+  }
+
   return questions;
 }

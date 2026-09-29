@@ -1,6 +1,7 @@
 import {
   Achievement,
   MistakeRecord,
+  SavedCustomLevel,
   SessionSummary,
   UserProfile,
 } from '../types';
@@ -13,7 +14,10 @@ const STORAGE_KEYS = {
   ACHIEVEMENTS: 'calcrush_achievements_v1',
   BONUS_RECORDS: 'calcrush_bonus_records_v1',
   DAILY_RECORDS: 'calcrush_daily_records_v1',
+  SAVED_CUSTOM_LEVELS: 'calcrush_saved_custom_levels_v1',
   ACCOUNTS_DB: 'calcrush_accounts_store_v1', // Mock cloud accounts database for multi-account login/migration
+  SEEN_VERSION: 'calcrush_seen_version_v1',
+  DOWNLOAD_PROMPT: 'calcrush_download_prompt_pref_v1',
 };
 
 export const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -76,7 +80,7 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
   {
     id: 'rational_master',
     title: 'Rational Master',
-    description: 'Complete Level 6 (Multi-Operation Rational).',
+    description: 'Complete Level 6 (Multi-Operation Rational) with ≥ 80% accuracy.',
     icon: '📐',
     progress: 0,
     maxProgress: 1,
@@ -97,6 +101,38 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
     progress: 0,
     maxProgress: 1,
   },
+  {
+    id: 'streak_master',
+    title: 'Daily Habit',
+    description: 'Maintain a 3-day daily training streak.',
+    icon: '🌟',
+    progress: 0,
+    maxProgress: 3,
+  },
+  {
+    id: 'flawless_50',
+    title: 'Flawless Fifty',
+    description: 'Reach an extraordinary 50-question streak without a single mistake.',
+    icon: '✨',
+    progress: 0,
+    maxProgress: 50,
+  },
+  {
+    id: 'mathlete',
+    title: 'Mathlete 1200',
+    description: 'Reach a competitive rating of 1,200 or higher.',
+    icon: '🥇',
+    progress: 1000,
+    maxProgress: 1200,
+  },
+  {
+    id: 'mistake_eraser',
+    title: 'Mistake Eraser',
+    description: 'Drill and resolve 10 mistakes in your Mistake Bank.',
+    icon: '🧼',
+    progress: 0,
+    maxProgress: 10,
+  },
 ];
 
 export const DEFAULT_USER: UserProfile = {
@@ -114,6 +150,8 @@ export const DEFAULT_USER: UserProfile = {
   soundEnabled: true,
   hapticsEnabled: true,
   theme: 'dark',
+  dailyGoal: 50,
+  dailyStreak: 0,
 };
 
 export const storage = {
@@ -244,6 +282,23 @@ export const storage = {
     }
   },
 
+  getSavedCustomLevels(): SavedCustomLevel[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SAVED_CUSTOM_LEVELS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveCustomLevels(levels: SavedCustomLevel[]) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SAVED_CUSTOM_LEVELS, JSON.stringify(levels));
+    } catch {
+      // storage error
+    }
+  },
+
   // Accounts database simulation for authentic cross-device accounts & login
   getRegisteredAccounts(): Record<string, { passwordHash: string; userData: UserProfile; allData: unknown }> {
     try {
@@ -264,6 +319,41 @@ export const storage = {
     }
   },
 
+  getSeenVersion(): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.SEEN_VERSION);
+    } catch {
+      return null;
+    }
+  },
+
+  setSeenVersion(version: string) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SEEN_VERSION, version);
+    } catch {
+      // storage error
+    }
+  },
+
+  getDownloadPromptPref(): { dontShowAgain: boolean; remindAfter?: number } {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DOWNLOAD_PROMPT);
+      return data ? JSON.parse(data) : { dontShowAgain: false };
+    } catch {
+      return { dontShowAgain: false };
+    }
+  },
+
+  setDownloadPromptPref(pref: { dontShowAgain?: boolean; remindAfter?: number }) {
+    try {
+      const current = this.getDownloadPromptPref();
+      const updated = { ...current, ...pref };
+      localStorage.setItem(STORAGE_KEYS.DOWNLOAD_PROMPT, JSON.stringify(updated));
+    } catch {
+      // storage error
+    }
+  },
+
   clearAllData() {
     try {
       localStorage.removeItem(STORAGE_KEYS.USER);
@@ -273,6 +363,7 @@ export const storage = {
       localStorage.removeItem(STORAGE_KEYS.ACHIEVEMENTS);
       localStorage.removeItem(STORAGE_KEYS.BONUS_RECORDS);
       localStorage.removeItem(STORAGE_KEYS.DAILY_RECORDS);
+      localStorage.removeItem(STORAGE_KEYS.SAVED_CUSTOM_LEVELS);
     } catch {
       // storage error
     }

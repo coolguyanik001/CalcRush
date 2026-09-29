@@ -12,8 +12,12 @@ import {
   CloudCheck,
   CloudOff,
   Sparkles,
+  Bot,
+  Download,
+  ScrollText,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { CURRENT_VERSION } from '../data/changelog';
 
 export const Navbar: React.FC = () => {
   const {
@@ -25,6 +29,8 @@ export const Navbar: React.FC = () => {
     updateUser,
     setIsAuthModalOpen,
     setAuthModalMode,
+    setIsDownloadModalOpen,
+    setIsChangelogModalOpen,
   } = useApp();
 
   if (activeSession) {
@@ -46,7 +52,7 @@ export const Navbar: React.FC = () => {
       <header className="sticky top-0 z-40 w-full border-b border-[#202833] bg-[#080B10]/95 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Brand Logo */}
-          <div
+            <div
             onClick={() => setActiveView('home')}
             className="flex cursor-pointer items-center space-x-3 group"
           >
@@ -54,9 +60,22 @@ export const Navbar: React.FC = () => {
               ∑
             </div>
             <div>
-              <span className="font-extrabold tracking-wider text-base text-[#F5F7FA]">
-                CALC<span className="text-cyan-400">RUSH</span>
-              </span>
+              <div className="flex items-center space-x-2">
+                <span className="font-extrabold tracking-wider text-base text-[#F5F7FA]">
+                  CALC<span className="text-cyan-400">RUSH</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsChangelogModalOpen(true);
+                  }}
+                  className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#111720] text-cyan-400 border border-[#202833] hover:border-cyan-500/40 hover:text-cyan-300 transition-colors"
+                  title={`View Changelog (v${CURRENT_VERSION})`}
+                >
+                  v{CURRENT_VERSION}
+                </button>
+              </div>
               <p className="text-[10px] uppercase tracking-widest text-[#8B95A5] -mt-0.5">
                 Train Calculation
               </p>
@@ -83,6 +102,20 @@ export const Navbar: React.FC = () => {
                 </button>
               );
             })}
+
+            {/* AI Maker Nav item */}
+            <button
+              onClick={() => setActiveView('ai-maker')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                activeView === 'ai-maker'
+                  ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
+                  : 'border-[#202833]/60 text-[#8B95A5] hover:text-[#F5F7FA] hover:bg-[#0D1219]'
+              }`}
+              title="AI Custom Level Maker"
+            >
+              <Bot className="w-3.5 h-3.5 text-cyan-400" />
+              <span>AI Maker</span>
+            </button>
           </nav>
 
           {/* Quick Metrics & User Status */}
@@ -152,6 +185,16 @@ export const Navbar: React.FC = () => {
                 )}
               </>
             )}
+
+            {/* Download App Trigger */}
+            <button
+              onClick={() => setIsDownloadModalOpen(true)}
+              className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#111720] border border-[#202833] text-[#8B95A5] hover:text-cyan-400 hover:border-cyan-500/40 transition-colors"
+              title="Download CalcRush Desktop & Mobile App"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span>App</span>
+            </button>
 
             {/* Profile Avatar Trigger */}
             <button

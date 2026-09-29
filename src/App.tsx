@@ -15,6 +15,10 @@ import { CalculationWorkspace } from './components/CalculationWorkspace';
 import { SessionResults } from './components/SessionResults';
 import { AuthModal } from './components/AuthModal';
 import { MistakeBankModal } from './components/MistakeBankModal';
+import { AILevelMakerView } from './components/AILevelMakerView';
+import { DownloadModal } from './components/DownloadModal';
+import { ChangelogModal } from './components/ChangelogModal';
+import { UpdateBanner } from './components/UpdateBanner';
 import { QuestionResult } from './types';
 
 const MainAppContent: React.FC = () => {
@@ -71,12 +75,14 @@ const MainAppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#080B10] text-[#F5F7FA]">
+      <UpdateBanner />
       <Navbar />
 
       <main className="transition-opacity duration-200">
         {activeView === 'home' && <HomeDashboard />}
         {activeView === 'competitive' && <CompetitiveView />}
         {activeView === 'practice' && <PracticeView />}
+        {activeView === 'ai-maker' && <AILevelMakerView />}
         {activeView === 'statistics' && <StatisticsView />}
         {activeView === 'profile' && <ProfileView />}
       </main>
@@ -84,6 +90,8 @@ const MainAppContent: React.FC = () => {
       {/* Global Modals */}
       <AuthModal />
       <MistakeBankModal />
+      <DownloadModal />
+      <ChangelogModal />
     </div>
   );
 };

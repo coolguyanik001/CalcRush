@@ -15,8 +15,14 @@ import {
   LogOut,
   Edit2,
   Lock,
+  ScrollText,
+  Package,
+  ExternalLink,
+  Laptop,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { CURRENT_VERSION } from '../data/changelog';
+import { GITHUB_RELEASES_URL } from '../data/releases';
 
 export const ProfileView: React.FC = () => {
   const {
@@ -24,12 +30,16 @@ export const ProfileView: React.FC = () => {
     overallStats,
     achievements,
     updateUser,
+    setDailyGoal,
+    dailyGoalProgress,
     exportData,
     resetAllProgress,
     signOut,
     setIsAuthModalOpen,
     setAuthModalMode,
     isOnline,
+    setIsDownloadModalOpen,
+    setIsChangelogModalOpen,
   } = useApp();
 
   const [isEditingName, setIsEditingName] = useState(false);
@@ -149,10 +159,10 @@ export const ProfileView: React.FC = () => {
           )}
         </div>
 
-        {/* 4-Stat Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-[#202833]">
+        {/* 5-Stat Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6 pt-6 border-t border-[#202833]">
           <div>
-            <span className="text-[10px] uppercase font-bold text-[#8B95A5] block">Level</span>
+            <span className="text-[10px] uppercase font-bold text-[#8B95A5] block">Tier</span>
             <span className="text-xl font-bold font-math text-cyan-400">
               Level {user?.competitiveLevel || 1}
             </span>
@@ -173,8 +183,16 @@ export const ProfileView: React.FC = () => {
           </div>
 
           <div>
+            <span className="text-[10px] uppercase font-bold text-[#8B95A5] block">Daily Streak</span>
+            <span className="text-xl font-bold font-math text-amber-400 flex items-center space-x-1">
+              <span>{dailyGoalProgress.dailyStreak}</span>
+              <span className="text-xs font-normal text-[#8B95A5]">days</span>
+            </span>
+          </div>
+
+          <div>
             <span className="text-[10px] uppercase font-bold text-[#8B95A5] block">Questions</span>
-            <span className="text-xl font-bold font-math text-amber-400">
+            <span className="text-xl font-bold font-math text-[#F5F7FA]">
               {user?.questionsSolved || 0}
             </span>
           </div>
@@ -222,6 +240,13 @@ export const ProfileView: React.FC = () => {
                   <p className="text-[11px] text-[#8B95A5] leading-snug">
                     {ach.description}
                   </p>
+
+                  {/* Unlocked date badge */}
+                  {isUnlocked && ach.unlockedAt && (
+                    <span className="text-[10px] text-emerald-400/80 font-math pt-1 block">
+                      Unlocked {new Date(ach.unlockedAt).toLocaleDateString()}
+                    </span>
+                  )}
 
                   {/* Progress bar if not single trigger */}
                   {!isUnlocked && ach.maxProgress > 1 && (
@@ -296,6 +321,31 @@ export const ProfileView: React.FC = () => {
             </button>
           </div>
 
+          {/* Daily Training Target */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold text-[#F5F7FA] block">Daily Training Target</span>
+              <span className="text-[11px] text-[#8B95A5] block">
+                Target calculations per day to maintain your training consistency streak.
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-[#0D1219] p-1 rounded-xl border border-[#202833] self-start sm:self-auto">
+              {[20, 50, 100].map((goal) => (
+                <button
+                  key={goal}
+                  onClick={() => setDailyGoal(goal)}
+                  className={`py-1.5 px-3 rounded-lg text-xs font-math font-bold transition-all ${
+                    (user?.dailyGoal || 50) === goal
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                      : 'text-[#8B95A5] hover:text-[#F5F7FA]'
+                  }`}
+                >
+                  {goal}Q
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Export Data */}
           <div className="flex items-center justify-between pt-4">
             <div className="space-y-0.5">
@@ -326,6 +376,63 @@ export const ProfileView: React.FC = () => {
               className="py-1.5 px-3 rounded-lg bg-rose-950/20 hover:bg-rose-950/40 text-rose-400 border border-rose-500/30 text-xs font-medium transition-colors"
             >
               Reset Data
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 3: MULTI-PLATFORM RELEASES & UPDATES */}
+      <div className="p-5 sm:p-6 rounded-2xl bg-[#111720] border border-[#202833] space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <h2 className="text-base font-bold text-[#F5F7FA]">Desktop & Mobile Applications</h2>
+            <p className="text-xs text-[#8B95A5]">
+              CalcRush is officially released for Android, Windows, and Linux.
+            </p>
+          </div>
+          <span className="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+            v{CURRENT_VERSION}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Download Center Trigger */}
+          <div className="p-4 rounded-xl bg-[#0D1219] border border-[#202833] flex flex-col justify-between space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2 text-cyan-400 font-semibold text-xs">
+                <Package className="w-4 h-4" />
+                <span>Release Packages</span>
+              </div>
+              <p className="text-xs text-[#8B95A5] leading-relaxed">
+                Download verified binaries (.apk, .exe, .AppImage, .deb) with cryptographic SHA-256 hashes.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsDownloadModalOpen(true)}
+              className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-xs transition-colors shadow-sm"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download Center</span>
+            </button>
+          </div>
+
+          {/* Changelog Modal Trigger */}
+          <div className="p-4 rounded-xl bg-[#0D1219] border border-[#202833] flex flex-col justify-between space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2 text-amber-400 font-semibold text-xs">
+                <ScrollText className="w-4 h-4" />
+                <span>Changelog & Audit</span>
+              </div>
+              <p className="text-xs text-[#8B95A5] leading-relaxed">
+                Inspect complete version notes, bug fixes, rational parser audit reports, and roadmap.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsChangelogModalOpen(true)}
+              className="w-full flex items-center justify-center space-x-1.5 py-2 px-3 rounded-lg bg-[#111720] hover:bg-[#18202c] text-[#F5F7FA] border border-[#202833] text-xs font-semibold transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>View What&apos;s New</span>
             </button>
           </div>
         </div>

@@ -1,11 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { LEVEL_DEFINITIONS } from '../engine/generator';
+import { generateTrainingRecommendations } from '../engine/recommendations';
 import {
   Achievement,
   MistakeRecord,
   QuestionResult,
+  SavedCustomLevel,
   SessionConfig,
   SessionSummary,
+  TrainingRecommendation,
   UserProfile,
 } from '../types';
 import { soundEngine } from '../utils/audio';
@@ -24,10 +27,18 @@ export interface ModeStats {
   bestStreak: number;
 }
 
+export interface DailyGoalProgress {
+  questionsToday: number;
+  goal: number;
+  percentage: number;
+  isGoalMet: boolean;
+  dailyStreak: number;
+}
+
 interface AppContextType {
   user: UserProfile | null;
-  activeView: 'home' | 'competitive' | 'practice' | 'statistics' | 'profile';
-  setActiveView: (view: 'home' | 'competitive' | 'practice' | 'statistics' | 'profile') => void;
+  activeView: 'home' | 'competitive' | 'practice' | 'statistics' | 'profile' | 'ai-maker';
+  setActiveView: (view: 'home' | 'competitive' | 'practice' | 'statistics' | 'profile' | 'ai-maker') => void;
   activeSession: SessionConfig | null;
   startSession: (config: SessionConfig) => void;
   endSession: () => void;
@@ -36,6 +47,10 @@ interface AppContextType {
   clearLastSessionSummary: () => void;
   competitiveSessions: SessionSummary[];
   practiceSessions: SessionSummary[];
+  savedCustomLevels: SavedCustomLevel[];
+  saveCustomLevel: (level: SavedCustomLevel) => void;
+  deleteCustomLevel: (id: string) => void;
+  toggleCustomLevelFavorite: (id: string) => void;
   mistakes: MistakeRecord[];
   achievements: Achievement[];
   bonusRecords: Record<string, { bestStreak: number; bestScore: number; bestAvgTime: number }>;
@@ -61,6 +76,9 @@ interface AppContextType {
     all: Record<string, { total: number; correct: number; accuracy: number }>;
   };
   weakArea: { category: string; accuracy: number } | null;
+  dailyGoalProgress: DailyGoalProgress;
+  setDailyGoal: (goal: number) => void;
+  recommendations: TrainingRecommendation[];
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
   authModalMode: 'welcome' | 'signup' | 'signin' | 'guest' | 'save_progress';
@@ -69,6 +87,12 @@ interface AppContextType {
   setIsSaveProgressModalOpen: (open: boolean) => void;
   isMistakeBankModalOpen: boolean;
   setIsMistakeBankModalOpen: (open: boolean) => void;
+  isChangelogModalOpen: boolean;
+  setIsChangelogModalOpen: (open: boolean) => void;
+  isDownloadModalOpen: boolean;
+  setIsDownloadModalOpen: (open: boolean) => void;
+  isUpdateBannerVisible: boolean;
+  dismissUpdateBanner: (mode: 'snooze' | 'permanent') => void;
   newLevelUnlocked: number | null;
   clearNewLevelUnlocked: () => void;
   continueAsGuest: (name: string) => void;
@@ -77,19 +101,43 @@ interface AppContextType {
   signOut: () => void;
   updateUser: (updates: Partial<UserProfile>) => void;
   solveMistake: (id: string) => void;
+  clearAllMistakes: () => void;
   exportData: () => void;
   resetAllProgress: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Hash function simulation for passwords (never plain text)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'calcrush_salt_2026');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+// Synchronous, secure hash function for local storage accounts that works in all browser environments (HTTP, HTTPS, iframe)
+function hashPassword(password: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  const str = password + '_calcrush_salt_2026';
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+
+function getTodayDateString(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getYesterdayDateString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function calculateMetricsForSessions(sessions: SessionSummary[]): {
@@ -155,8 +203,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dailyRecords, setDailyRecords] = useState<Record<string, { completed: boolean; score: number; accuracy: number; avgTime: number }>>(() =>
     storage.getDailyRecords()
   );
+  const [savedCustomLevels, setSavedCustomLevels] = useState<SavedCustomLevel[]>(() =>
+    storage.getSavedCustomLevels()
+  );
 
-  const [activeView, setActiveView] = useState<'home' | 'competitive' | 'practice' | 'statistics' | 'profile'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'competitive' | 'practice' | 'statistics' | 'profile' | 'ai-maker'>('home');
   const [activeSession, setActiveSession] = useState<SessionConfig | null>(null);
   const [lastSessionSummary, setLastSessionSummary] = useState<SessionSummary | null>(null);
 
@@ -164,9 +215,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<
     'welcome' | 'signup' | 'signin' | 'guest' | 'save_progress'
-  >('guest');
+  >(() => (storage.getUser() ? 'signup' : 'welcome'));
   const [isSaveProgressModalOpen, setIsSaveProgressModalOpen] = useState<boolean>(false);
   const [isMistakeBankModalOpen, setIsMistakeBankModalOpen] = useState<boolean>(false);
+  const [isChangelogModalOpen, setIsChangelogModalOpen] = useState<boolean>(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
+  const [isUpdateBannerVisible, setIsUpdateBannerVisible] = useState<boolean>(() => {
+    const pref = storage.getDownloadPromptPref();
+    if (pref.dontShowAgain) return false;
+    if (pref.remindAfter && Date.now() < pref.remindAfter) return false;
+    return true;
+  });
+
+  const dismissUpdateBanner = (mode: 'snooze' | 'permanent') => {
+    if (mode === 'snooze') {
+      storage.setDownloadPromptPref({ remindAfter: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+    } else {
+      storage.setDownloadPromptPref({ dontShowAgain: true });
+    }
+    setIsUpdateBannerVisible(false);
+  };
+
   const [newLevelUnlocked, setNewLevelUnlocked] = useState<number | null>(null);
 
   // Monitor online status
@@ -212,6 +281,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     storage.saveDailyRecords(dailyRecords);
   }, [dailyRecords]);
+
+  useEffect(() => {
+    storage.saveCustomLevels(savedCustomLevels);
+  }, [savedCustomLevels]);
 
   // Check if a level is unlocked
   const isLevelUnlocked = (targetLevel: number): boolean => {
@@ -301,6 +374,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  // Daily training questions solved today
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, [competitiveSessions, practiceSessions]);
+
+  const questionsToday = useMemo(() => {
+    const todaySessions = [...competitiveSessions, ...practiceSessions].filter((s) => s.date >= todayStart);
+    return todaySessions.reduce((sum, s) => sum + s.totalQuestions, 0);
+  }, [competitiveSessions, practiceSessions, todayStart]);
+
+  const currentDailyGoal = user?.dailyGoal || 50;
+  const dailyGoalProgress: DailyGoalProgress = useMemo(() => {
+    return {
+      questionsToday,
+      goal: currentDailyGoal,
+      percentage: Math.min(100, Math.round((questionsToday / currentDailyGoal) * 100)),
+      isGoalMet: questionsToday >= currentDailyGoal,
+      dailyStreak: user?.dailyStreak || (questionsToday > 0 ? 1 : 0),
+    };
+  }, [questionsToday, currentDailyGoal, user?.dailyStreak]);
+
+  const nextReqProgress = useMemo(() => {
+    return getLevelProgress(Math.min(10, (user?.competitiveLevel || 1) + 1));
+  }, [user?.competitiveLevel, competitiveSessions]);
+
+  const recommendations = useMemo(() => {
+    return generateTrainingRecommendations(
+      user,
+      competitiveSessions,
+      mistakes,
+      weakArea,
+      questionsToday,
+      currentDailyGoal,
+      user?.competitiveLevel || 1,
+      nextReqProgress
+    );
+  }, [user, competitiveSessions, mistakes, weakArea, questionsToday, currentDailyGoal, nextReqProgress]);
+
   // Calculate Chess-style Elo Rating Change
   const calculateRatingDelta = (
     currentRating: number,
@@ -385,6 +498,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       mode: config.mode,
       level: config.level,
       bonusType: config.bonusType,
+      customBlueprint: config.customBlueprint,
+      customLevelId: config.customLevelId,
       totalQuestions: totalQ,
       correctCount: correctQ,
       accuracy,
@@ -404,6 +519,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCompetitiveSessions((prev) => [summary, ...prev]);
     } else {
       setPracticeSessions((prev) => [summary, ...prev]);
+    }
+
+    // Update saved custom level statistics if playing custom level
+    if (config.mode === 'custom' && config.customLevelId) {
+      setSavedCustomLevels((prev) =>
+        prev.map((lvl) => {
+          if (lvl.id === config.customLevelId) {
+            return {
+              ...lvl,
+              timesPlayed: lvl.timesPlayed + 1,
+              bestAccuracy: Math.max(lvl.bestAccuracy ?? 0, accuracy),
+              bestAvgTime:
+                lvl.bestAvgTime && lvl.bestAvgTime > 0
+                  ? Math.min(lvl.bestAvgTime, avgTime)
+                  : avgTime,
+            };
+          }
+          return lvl;
+        })
+      );
     }
 
     const newMistakes: MistakeRecord[] = results
@@ -481,6 +616,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const newBestStreak = Math.max(user.bestStreak, newCurrentStreak, sessionBestStreak);
 
+      const todayStr = getTodayDateString();
+      const yesterdayStr = getYesterdayDateString();
+      let newDailyStreak = user.dailyStreak || 0;
+      if (user.lastActiveDate === todayStr) {
+        newDailyStreak = Math.max(1, newDailyStreak);
+      } else if (user.lastActiveDate === yesterdayStr) {
+        newDailyStreak = newDailyStreak + 1;
+      } else {
+        newDailyStreak = 1;
+      }
+
       const updatedUser: UserProfile = {
         ...user,
         competitiveLevel: newLevel,
@@ -490,6 +636,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         bestStreak: newBestStreak,
         questionsSolved: user.questionsSolved + totalQ,
         totalTimeTrained: user.totalTimeTrained + Math.round(totalTime),
+        dailyStreak: newDailyStreak,
+        lastActiveDate: todayStr,
       };
 
       setUser(updatedUser);
@@ -535,6 +683,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else if (ach.id === 'daily_champion' && config.mode === 'daily' && totalQ >= 50 && accuracy >= 70) {
           newProgress = 1;
           unlocked = true;
+        } else if (ach.id === 'streak_master') {
+          const streakVal = user?.dailyStreak || 1;
+          newProgress = Math.max(ach.progress, streakVal);
+          if (newProgress >= 3) unlocked = true;
+        } else if (ach.id === 'flawless_50') {
+          newProgress = Math.max(ach.progress, sessionBestStreak);
+          if (newProgress >= 50) unlocked = true;
+        } else if (ach.id === 'mathlete') {
+          newProgress = Math.max(ach.progress, ratingAfter);
+          if (ratingAfter >= 1200) unlocked = true;
         }
 
         return {
@@ -552,6 +710,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const solveMistake = (id: string) => {
     setMistakes((prev) => prev.filter((m) => m.id !== id));
+    setAchievements((prev) =>
+      prev.map((ach) => {
+        if (ach.id === 'mistake_eraser' && !ach.unlockedAt) {
+          const nextProg = ach.progress + 1;
+          return {
+            ...ach,
+            progress: Math.min(ach.maxProgress, nextProg),
+            unlockedAt: nextProg >= ach.maxProgress ? Date.now() : ach.unlockedAt,
+          };
+        }
+        return ach;
+      })
+    );
+  };
+
+  const clearAllMistakes = () => {
+    setMistakes([]);
+    storage.saveMistakes([]);
+  };
+
+  const setDailyGoal = (goal: number) => {
+    if (user) {
+      updateUser({ dailyGoal: goal });
+    }
   };
 
   const continueAsGuest = (name: string) => {
@@ -584,21 +766,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: baseProfile.createdAt || Date.now(),
     };
 
-    hashPassword(password).then((hashed) => {
-      storage.saveRegisteredAccount(sanitizedEmail, hashed, accountUser, {
-        competitiveSessions,
-        practiceSessions,
-        mistakes,
-        achievements,
-        bonusRecords,
-        dailyRecords,
-      });
+    const hashed = hashPassword(password);
+    storage.saveRegisteredAccount(sanitizedEmail, hashed, accountUser, {
+      competitiveSessions,
+      practiceSessions,
+      mistakes,
+      achievements,
+      bonusRecords,
+      dailyRecords,
+      savedCustomLevels,
     });
 
     setUser(accountUser);
     storage.saveUser(accountUser);
-    setIsAuthModalOpen(false);
-    setIsSaveProgressModalOpen(false);
     return true;
   };
 
@@ -611,28 +791,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    hashPassword(password).then((hashed) => {
-      if (account.passwordHash === hashed) {
-        setUser(account.userData);
-        storage.saveUser(account.userData);
-        const savedData = account.allData as {
-          competitiveSessions?: SessionSummary[];
-          practiceSessions?: SessionSummary[];
-          mistakes?: MistakeRecord[];
-          achievements?: Achievement[];
-          bonusRecords?: Record<string, { bestStreak: number; bestScore: number; bestAvgTime: number }>;
-          dailyRecords?: Record<string, { completed: boolean; score: number; accuracy: number; avgTime: number }>;
-        };
-        if (savedData?.competitiveSessions) setCompetitiveSessions(savedData.competitiveSessions);
-        if (savedData?.practiceSessions) setPracticeSessions(savedData.practiceSessions);
-        if (savedData?.mistakes) setMistakes(savedData.mistakes);
-        if (savedData?.achievements) setAchievements(savedData.achievements);
-        if (savedData?.bonusRecords) setBonusRecords(savedData.bonusRecords);
-        if (savedData?.dailyRecords) setDailyRecords(savedData.dailyRecords);
-      }
-    });
+    const hashed = hashPassword(password);
+    if (account.passwordHash !== hashed) {
+      return false;
+    }
 
-    setIsAuthModalOpen(false);
+    setUser(account.userData);
+    storage.saveUser(account.userData);
+    const savedData = account.allData as {
+      competitiveSessions?: SessionSummary[];
+      practiceSessions?: SessionSummary[];
+      mistakes?: MistakeRecord[];
+      achievements?: Achievement[];
+      bonusRecords?: Record<string, { bestStreak: number; bestScore: number; bestAvgTime: number }>;
+      dailyRecords?: Record<string, { completed: boolean; score: number; accuracy: number; avgTime: number }>;
+      savedCustomLevels?: SavedCustomLevel[];
+    };
+    if (savedData?.competitiveSessions) setCompetitiveSessions(savedData.competitiveSessions);
+    if (savedData?.practiceSessions) setPracticeSessions(savedData.practiceSessions);
+    if (savedData?.mistakes) setMistakes(savedData.mistakes);
+    if (savedData?.achievements) setAchievements(savedData.achievements);
+    if (savedData?.bonusRecords) setBonusRecords(savedData.bonusRecords);
+    if (savedData?.dailyRecords) setDailyRecords(savedData.dailyRecords);
+    if (savedData?.savedCustomLevels) setSavedCustomLevels(savedData.savedCustomLevels);
+
     return true;
   };
 
@@ -653,6 +835,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAchievements(INITIAL_ACHIEVEMENTS);
     setBonusRecords({});
     setDailyRecords({});
+    setSavedCustomLevels([]);
     setLastSessionSummary(null);
     setActiveSession(null);
     storage.saveCompetitiveSessions([]);
@@ -661,6 +844,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storage.saveAchievements(INITIAL_ACHIEVEMENTS);
     storage.saveBonusRecords({});
     storage.saveDailyRecords({});
+    storage.saveCustomLevels([]);
   };
 
   const updateUser = (updates: Partial<UserProfile>) => {
@@ -706,8 +890,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAchievements(INITIAL_ACHIEVEMENTS);
     setBonusRecords({});
     setDailyRecords({});
+    setSavedCustomLevels([]);
     setLastSessionSummary(null);
     setActiveSession(null);
+  };
+
+  const saveCustomLevel = (level: SavedCustomLevel) => {
+    setSavedCustomLevels((prev) => {
+      const idx = prev.findIndex((l) => l.id === level.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = level;
+        return copy;
+      }
+      return [level, ...prev];
+    });
+  };
+
+  const deleteCustomLevel = (id: string) => {
+    setSavedCustomLevels((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  const toggleCustomLevelFavorite = (id: string) => {
+    setSavedCustomLevels((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, favorite: !l.favorite } : l))
+    );
   };
 
   return (
@@ -724,6 +931,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearLastSessionSummary,
         competitiveSessions,
         practiceSessions,
+        savedCustomLevels,
+        saveCustomLevel,
+        deleteCustomLevel,
+        toggleCustomLevelFavorite,
         mistakes,
         achievements,
         bonusRecords,
@@ -737,6 +948,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         categoryStats: overallMetrics.categoryMap,
         categoryStatsByMode,
         weakArea,
+        dailyGoalProgress,
+        setDailyGoal,
+        recommendations,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authModalMode,
@@ -745,6 +959,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsSaveProgressModalOpen,
         isMistakeBankModalOpen,
         setIsMistakeBankModalOpen,
+        isChangelogModalOpen,
+        setIsChangelogModalOpen,
+        isDownloadModalOpen,
+        setIsDownloadModalOpen,
+        isUpdateBannerVisible,
+        dismissUpdateBanner,
         newLevelUnlocked,
         clearNewLevelUnlocked,
         continueAsGuest,
@@ -753,6 +973,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signOut,
         updateUser,
         solveMistake,
+        clearAllMistakes,
         exportData,
         resetAllProgress,
       }}

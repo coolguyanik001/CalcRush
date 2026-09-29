@@ -1,0 +1,5 @@
+54bee45b7f8d0248e1cd1eecee1d92a5065e5b9b95635329a90b2bec2114fa50  CalcRush-Linux-x64-v1.4.0.AppImage
+312ade0129bb9f232ed227325fb75928b682b824e053e980c7be411c77ced2e6  CalcRush-Linux-x64-v1.4.0.deb
+de23435f43c1699deeb4d50d02a93b01ba45cde06493aa4cb213857d5d2ab9fa  CalcRush-Windows-x64-v1.4.0-Setup.exe
+12081eb842568f74fae4048a4c90c5f97f21f6a2d44a128caa820311e390ab4e  CalcRush-Windows-x64-v1.4.0-Portable.exe
+9dfd24c0e55dafddcbe793ddba5377f8505aa3e54cf7c8438cfb0499721d511f  CalcRush-Android-v1.4.0.apk

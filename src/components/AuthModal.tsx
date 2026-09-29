@@ -25,22 +25,36 @@ export const AuthModal: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Handle first-time landing / onboarding when user === null
-  const isFirstTimeLanding = !user && !isAuthModalOpen && !isSaveProgressModalOpen;
+  // Show modal if user is new (!user), or if explicitly opened
+  const isFirstTimeLanding = !user;
 
   if (!isAuthModalOpen && !isSaveProgressModalOpen && !isFirstTimeLanding) {
     return null;
   }
 
   // Active view: 'welcome' | 'guest' | 'signup' | 'signin' | 'save_progress'
-  let currentView: 'welcome' | 'guest' | 'signup' | 'signin' | 'save_progress' = authModalMode;
-  if (isSaveProgressModalOpen) currentView = 'save_progress';
-  if (isFirstTimeLanding) currentView = 'welcome';
+  const currentView: 'welcome' | 'guest' | 'signup' | 'signin' | 'save_progress' = isSaveProgressModalOpen
+    ? 'save_progress'
+    : authModalMode;
+
+  const switchMode = (mode: 'welcome' | 'guest' | 'signup' | 'signin') => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    setIsSaveProgressModalOpen(false);
+    setAuthModalMode(mode);
+  };
 
   const handleGuestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    continueAsGuest(name || 'Anik');
+    continueAsGuest(name.trim() || 'Guest');
     setIsAuthModalOpen(false);
+    setIsSaveProgressModalOpen(false);
+  };
+
+  const handleInstantGuest = () => {
+    continueAsGuest('Guest');
+    setIsAuthModalOpen(false);
+    setIsSaveProgressModalOpen(false);
   };
 
   const handleSignUpSubmit = (e: React.FormEvent) => {
@@ -80,7 +94,7 @@ export const AuthModal: React.FC = () => {
       setIsSaveProgressModalOpen(false);
       setErrorMsg('');
       setSuccessMsg('');
-    }, 1000);
+    }, 600);
   };
 
   const handleSignInSubmit = (e: React.FormEvent) => {
@@ -103,21 +117,22 @@ export const AuthModal: React.FC = () => {
       setIsAuthModalOpen(false);
       setErrorMsg('');
       setSuccessMsg('');
-    }, 800);
+    }, 500);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#080B10]/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
       <div className="relative w-full max-w-md rounded-2xl bg-[#111720] border border-[#202833] p-6 sm:p-8 shadow-2xl">
         {/* Close Button (only if user is already established) */}
-        {user && !isFirstTimeLanding && (
+        {user && (
           <button
             onClick={() => {
               setIsAuthModalOpen(false);
               setIsSaveProgressModalOpen(false);
               setErrorMsg('');
             }}
-            className="absolute top-4 right-4 p-2 rounded-lg text-[#8B95A5] hover:text-[#F5F7FA] hover:bg-[#0D1219] transition-colors"
+            className="absolute top-4 right-4 p-2 rounded-lg text-[#8B95A5] hover:text-[#F5F7FA] hover:bg-[#0D1219] transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
@@ -159,26 +174,36 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <button
-              onClick={() => setAuthModalMode('signup')}
-              className="w-full py-3.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#080B10] font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-md shadow-cyan-500/20"
+              type="button"
+              onClick={() => switchMode('signup')}
+              className="w-full py-3.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#080B10] font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4 stroke-[2.5]" />
               <span>Create Account</span>
             </button>
 
             <button
-              onClick={() => setAuthModalMode('guest')}
-              className="w-full py-3.5 px-4 rounded-xl bg-[#0D1219] hover:bg-[#18202c] active:bg-[#202833] text-[#F5F7FA] border border-[#202833] font-semibold text-sm flex items-center justify-center space-x-2 transition-colors"
+              type="button"
+              onClick={() => switchMode('guest')}
+              className="w-full py-3.5 px-4 rounded-xl bg-[#0D1219] hover:bg-[#18202c] active:bg-[#202833] text-[#F5F7FA] border border-[#202833] font-semibold text-sm flex items-center justify-center space-x-2 transition-colors cursor-pointer"
             >
               <span>⚡ Continue as Guest</span>
             </button>
 
-            <div className="pt-2 text-center">
+            <div className="flex items-center justify-between pt-2 px-1 text-xs">
               <button
-                onClick={() => setAuthModalMode('signin')}
-                className="text-xs text-[#8B95A5] hover:text-cyan-400 transition-colors"
+                type="button"
+                onClick={handleInstantGuest}
+                className="text-[#8B95A5] hover:text-[#F5F7FA] transition-colors cursor-pointer"
               >
-                Already have an account? <span className="font-semibold text-cyan-400">Sign in</span>
+                Instant Play (Guest)
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('signin')}
+                className="text-[#8B95A5] hover:text-cyan-400 transition-colors cursor-pointer"
+              >
+                Already registered? <span className="font-semibold text-cyan-400">Sign in</span>
               </button>
             </div>
           </div>
@@ -208,16 +233,23 @@ export const AuthModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-sm transition-all shadow-md shadow-cyan-500/20"
+              className="w-full py-3 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#080B10] font-bold text-sm transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
             >
               Start Training
             </button>
 
-            <div className="text-center pt-1">
+            <div className="flex items-center justify-between pt-1 px-1 text-xs text-[#8B95A5]">
               <button
                 type="button"
-                onClick={() => setAuthModalMode('welcome')}
-                className="text-xs text-[#8B95A5] hover:text-[#F5F7FA]"
+                onClick={handleInstantGuest}
+                className="hover:text-[#F5F7FA] cursor-pointer"
+              >
+                Skip name & start
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('welcome')}
+                className="hover:text-[#F5F7FA] cursor-pointer"
               >
                 Back to options
               </button>
@@ -315,18 +347,25 @@ export const AuthModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-xs sm:text-sm transition-all shadow-md shadow-cyan-500/20 mt-2"
+              className="w-full py-3 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-xs sm:text-sm transition-all shadow-md shadow-cyan-500/20 mt-2 cursor-pointer"
             >
               Create Account
             </button>
 
-            <div className="text-center pt-2">
+            <div className="flex items-center justify-between pt-2 px-1 text-xs text-[#8B95A5]">
               <button
                 type="button"
-                onClick={() => setAuthModalMode('signin')}
-                className="text-xs text-[#8B95A5] hover:text-cyan-400"
+                onClick={() => switchMode('signin')}
+                className="hover:text-cyan-400 cursor-pointer"
               >
-                Already have an account? <span className="font-semibold text-cyan-400">Sign in</span>
+                Already registered? <span className="font-semibold text-cyan-400">Sign in</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleInstantGuest}
+                className="hover:text-[#F5F7FA] cursor-pointer"
+              >
+                Play as Guest
               </button>
             </div>
           </form>
@@ -376,18 +415,25 @@ export const AuthModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-xs sm:text-sm transition-all shadow-md shadow-cyan-500/20 mt-2"
+              className="w-full py-3 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#080B10] font-bold text-xs sm:text-sm transition-all shadow-md shadow-cyan-500/20 mt-2 cursor-pointer"
             >
               Sign In
             </button>
 
-            <div className="text-center pt-2">
+            <div className="flex items-center justify-between pt-2 px-1 text-xs text-[#8B95A5]">
               <button
                 type="button"
-                onClick={() => setAuthModalMode('signup')}
-                className="text-xs text-[#8B95A5] hover:text-cyan-400"
+                onClick={() => switchMode('signup')}
+                className="hover:text-cyan-400 cursor-pointer"
               >
-                Don't have an account? <span className="font-semibold text-cyan-400">Create one</span>
+                Need an account? <span className="font-semibold text-cyan-400">Create one</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleInstantGuest}
+                className="hover:text-[#F5F7FA] cursor-pointer"
+              >
+                Play as Guest
               </button>
             </div>
           </form>
@@ -426,18 +472,20 @@ export const AuthModal: React.FC = () => {
 
             <button
               onClick={() => {
-                setIsSaveProgressModalOpen(false);
-                setAuthModalMode('signup');
+                switchMode('signup');
                 setIsAuthModalOpen(true);
               }}
-              className="w-full py-3.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-sm transition-all shadow-md shadow-cyan-500/20"
+              className="w-full py-3.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#080B10] font-bold text-sm transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
             >
               Create Account & Migrate Data
             </button>
 
             <button
-              onClick={() => setIsSaveProgressModalOpen(false)}
-              className="w-full py-2.5 text-xs text-[#8B95A5] hover:text-[#F5F7FA]"
+              onClick={() => {
+                setIsSaveProgressModalOpen(false);
+                setIsAuthModalOpen(false);
+              }}
+              className="w-full py-2.5 text-xs text-[#8B95A5] hover:text-[#F5F7FA] cursor-pointer"
             >
               Not now, keep local
             </button>

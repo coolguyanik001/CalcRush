@@ -42,13 +42,21 @@ export const SessionResults: React.FC<SessionResultsProps> = ({
         {/* Header Title */}
         <div className="text-center space-y-1">
           <div className="inline-flex items-center space-x-1 px-3 py-1 rounded-full bg-[#111720] border border-[#202833] text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">
-            <span>{summary.mode} Session Complete</span>
+            <span>{summary.customBlueprint ? '🤖 Custom AI Level Complete' : `${summary.mode} Session Complete`}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            {summary.accuracy >= 90 ? 'Outstanding Calculation!' : summary.accuracy >= 70 ? 'Solid Session' : 'Keep Training'}
+            {summary.customBlueprint
+              ? summary.customBlueprint.title
+              : summary.accuracy >= 90
+              ? 'Outstanding Calculation!'
+              : summary.accuracy >= 70
+              ? 'Solid Session'
+              : 'Keep Training'}
           </h1>
           <p className="text-xs text-[#8B95A5]">
-            Level {summary.level}: {levelInfo?.name || 'Calculation'}
+            {summary.customBlueprint
+              ? `${summary.customBlueprint.description} · Difficulty ${summary.customBlueprint.difficulty}/10`
+              : `Level ${summary.level}: ${levelInfo?.name || 'Calculation'}`}
           </p>
         </div>
 

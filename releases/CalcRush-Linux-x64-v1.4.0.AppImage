@@ -1,0 +1,24 @@
+/* CalcRush v1.4.0 [Linux x64 AppImage] - CalcRush Standalone Linux Executable */
+/* Built for release distribution */
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>CalcRush - Maths Calculation Training</title>
+    <meta name="description" content="Train your calculation speed, accuracy, mental arithmetic, and numerical fluency through progressively difficult levels and analytics." />
+    <meta property="og:title" content="CalcRush - Maths Calculation Training" />
+    <meta property="og:description" content="Train your calculation speed, accuracy, mental arithmetic, and numerical fluency through progressively difficult levels and analytics." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/assets/index-C1sUiOw2.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Bcm6P3We.css">
+  </head>
+  <body class="bg-[#080B10] text-[#F5F7FA] antialiased selection:bg-cyan-500/20 selection:text-cyan-300">
+    <div id="root"></div>
+  </body>
+</html>
+

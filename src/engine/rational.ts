@@ -56,12 +56,13 @@ export function rationalFromDecimal(decStr: string | number): RationalNumber {
 
 export function parseRationalInput(input: string): RationalNumber | null {
   if (!input) return null;
-  // Normalize unicode minus signs, commas, and whitespace after minus
+  // Normalize unicode minus signs, commas, whitespace after minus, and whitespace around slashes
   let trimmed = input
     .trim()
     .replace(',', '.')
     .replace(/[\u2212\u2013\u2014]/g, '-')
-    .replace(/^-\s+/, '-');
+    .replace(/^-\s+/, '-')
+    .replace(/\s*\/\s*/g, '/');
 
   // Check for mixed number format: e.g. "1 1/2" or "-2 3/4"
   const mixedMatch = trimmed.match(/^(-?\d+)\s+(\d+)\/(\d+)$/);
@@ -82,8 +83,8 @@ export function parseRationalInput(input: string): RationalNumber | null {
   if (trimmed.includes('/')) {
     const parts = trimmed.split('/');
     if (parts.length !== 2) return null;
-    const num = parseFloat(parts[0].trim());
-    const den = parseFloat(parts[1].trim());
+    const num = Number(parts[0].trim());
+    const den = Number(parts[1].trim());
     if (isNaN(num) || isNaN(den) || den === 0) return null;
     return simplifyRational({
       num: Math.round(num),
@@ -150,8 +151,8 @@ export function isTerminatingDecimal(r: RationalNumber): boolean {
 export function rationalToDecimalString(r: RationalNumber): string | null {
   if (!isTerminatingDecimal(r)) return null;
   const val = r.num / r.den;
-  // Format up to 6 decimal places, removing trailing zeros
-  const rounded = parseFloat(val.toFixed(6));
+  // Format up to 10 decimal places, removing trailing zeros
+  const rounded = parseFloat(val.toFixed(10));
   return String(rounded);
 }
 

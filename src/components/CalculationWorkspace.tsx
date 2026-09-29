@@ -17,6 +17,7 @@ import { useApp } from '../context/AppContext';
 import { Question, QuestionResult, SessionConfig } from '../types';
 import {
   generateDailyChallengeQuestions,
+  generateQuestionsFromBlueprint,
   generateSessionQuestions,
   generateSingleNextQuestion,
   LEVEL_DEFINITIONS,
@@ -37,7 +38,7 @@ export const CalculationWorkspace: React.FC<WorkspaceProps> = ({
   onComplete,
   onExit,
 }) => {
-  const { user, mistakes } = useApp();
+  const { user, mistakes, solveMistake } = useApp();
   const soundEnabled = user?.soundEnabled ?? true;
   const hapticsEnabled = user?.hapticsEnabled ?? true;
 
@@ -79,7 +80,9 @@ export const CalculationWorkspace: React.FC<WorkspaceProps> = ({
   // Fix 4 & Fix 1: Initialize questions properly
   const initQuestions = useCallback(() => {
     let qList: Question[] = [];
-    if (config.mode === 'daily') {
+    if (config.customBlueprint) {
+      qList = generateQuestionsFromBlueprint(config.customBlueprint);
+    } else if (config.mode === 'daily') {
       qList = generateDailyChallengeQuestions();
     } else if (config.mode === 'mistakes') {
       if (mistakes.length > 0) {
@@ -243,6 +246,16 @@ export const CalculationWorkspace: React.FC<WorkspaceProps> = ({
         soundEngine.playStreak(soundEnabled);
         soundEngine.triggerHaptic('streak', hapticsEnabled);
       }
+
+      // Auto-resolve mistake in Mistake Bank if answered correctly
+      if (config.mode === 'mistakes') {
+        const matchingMistake = mistakes.find(
+          (m) => m.question.expression === currentQ.expression || currentQ.id.includes(m.id)
+        );
+        if (matchingMistake) {
+          solveMistake(matchingMistake.id);
+        }
+      }
     } else {
       soundEngine.playIncorrect(soundEnabled);
       soundEngine.triggerHaptic('incorrect', hapticsEnabled);
@@ -303,9 +316,13 @@ export const CalculationWorkspace: React.FC<WorkspaceProps> = ({
     if (!isLimitedSession || questions.length - nextIndex <= 5) {
       const additional: Question[] = [];
       const appendCount = 10;
-      for (let i = 0; i < appendCount; i++) {
-        const genLevel = config.difficulty === 'adaptive' ? Math.round(adaptiveLevel) : config.level;
-        additional.push(generateSingleNextQuestion(genLevel, config.category, config.bonusType));
+      if (config.customBlueprint) {
+        additional.push(...generateQuestionsFromBlueprint({ ...config.customBlueprint, questionCount: appendCount }));
+      } else {
+        for (let i = 0; i < appendCount; i++) {
+          const genLevel = config.difficulty === 'adaptive' ? Math.round(adaptiveLevel) : config.level;
+          additional.push(generateSingleNextQuestion(genLevel, config.category, config.bonusType));
+        }
       }
       setQuestions((prev) => [...prev, ...additional]);
     }
@@ -410,7 +427,9 @@ export const CalculationWorkspace: React.FC<WorkspaceProps> = ({
             <div className="flex items-center space-x-2">
               {/* Fix 10: Accurate Daily Challenge & Mode Header */}
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">
-                {config.mode === 'daily'
+                {config.customBlueprint
+                  ? `🤖 ${config.customBlueprint.title}`
+                  : config.mode === 'daily'
                   ? 'DAILY CHALLENGE'
                   : config.mode === 'mistakes'
                   ? 'MISTAKE BANK DRILL'
@@ -504,11 +523,15 @@ export const CalculationWorkspace: React.FC<WorkspaceProps> = ({
           <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#111720] border border-[#202833] text-xs font-math text-[#8B95A5] mb-4 sm:mb-6">
             <Clock className="w-3.5 h-3.5 text-cyan-400" />
             <span>{elapsedTime.toFixed(2)}s</span>
-            {currentQ.timeLimit && (
+            {currentQ.timeLimit ? (
               <span className="text-amber-400 text-[10px]">
                 / {currentQ.timeLimit}s target
               </span>
-            )}
+            ) : config.targetPace ? (
+              <span className={`text-[10px] font-semibold ${elapsedTime > config.targetPace ? 'text-rose-400' : 'text-amber-400'}`}>
+                / {config.targetPace.toFixed(1)}s pace
+              </span>
+            ) : null}
           </div>
 
           {/* Mathematical Expression (Dominant Typography) */}
