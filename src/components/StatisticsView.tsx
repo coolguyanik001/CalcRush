@@ -95,6 +95,35 @@ export const StatisticsView: React.FC = () => {
   const maxVal = values.length > 0 ? Math.max(...values) : 100;
   const valRange = maxVal - minVal || 1;
 
+  // Speed distribution across all questions in active sessions
+  const speedDistribution = React.useMemo(() => {
+    let sub15 = 0;
+    let sub30 = 0;
+    let sub50 = 0;
+    let over50 = 0;
+    let total = 0;
+
+    activeSessions.forEach((s) => {
+      s.results.forEach((r) => {
+        if (r.isCorrect) {
+          total++;
+          if (r.timeTaken < 1.5) sub15++;
+          else if (r.timeTaken < 3.0) sub30++;
+          else if (r.timeTaken < 5.0) sub50++;
+          else over50++;
+        }
+      });
+    });
+
+    return {
+      total,
+      sub15: { count: sub15, pct: total > 0 ? Math.round((sub15 / total) * 100) : 0 },
+      sub30: { count: sub30, pct: total > 0 ? Math.round((sub30 / total) * 100) : 0 },
+      sub50: { count: sub50, pct: total > 0 ? Math.round((sub50 / total) * 100) : 0 },
+      over50: { count: over50, pct: total > 0 ? Math.round((over50 / total) * 100) : 0 },
+    };
+  }, [activeSessions]);
+
   return (
     <div className="space-y-6 pb-24 max-w-4xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
       {/* Header */}
@@ -340,6 +369,75 @@ export const StatisticsView: React.FC = () => {
               })}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Speed & Pace Distribution */}
+      <div className="p-5 sm:p-6 rounded-2xl bg-[#111720] border border-[#202833] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div>
+            <h2 className="text-base font-bold text-[#F5F7FA]">Calculation Pace Distribution</h2>
+            <p className="text-xs text-[#8B95A5]">
+              Response latency categorization across correct calculations.
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-cyan-400 font-math">
+            {speedDistribution.total} questions analyzed
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3.5 rounded-xl bg-[#0D1219] border border-[#202833]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-amber-400">⚡ Lightning</span>
+              <span className="text-[10px] text-[#8B95A5] font-math">&lt; 1.5s</span>
+            </div>
+            <div className="text-xl font-bold font-math text-[#F5F7FA] mt-1">
+              {speedDistribution.sub15.pct}%
+            </div>
+            <span className="text-[10px] text-[#8B95A5] font-math">
+              {speedDistribution.sub15.count} questions
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#0D1219] border border-[#202833]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-cyan-400">🏎️ Rapid</span>
+              <span className="text-[10px] text-[#8B95A5] font-math">1.5 - 3.0s</span>
+            </div>
+            <div className="text-xl font-bold font-math text-[#F5F7FA] mt-1">
+              {speedDistribution.sub30.pct}%
+            </div>
+            <span className="text-[10px] text-[#8B95A5] font-math">
+              {speedDistribution.sub30.count} questions
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#0D1219] border border-[#202833]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-400">🎯 Steady</span>
+              <span className="text-[10px] text-[#8B95A5] font-math">3.0 - 5.0s</span>
+            </div>
+            <div className="text-xl font-bold font-math text-[#F5F7FA] mt-1">
+              {speedDistribution.sub50.pct}%
+            </div>
+            <span className="text-[10px] text-[#8B95A5] font-math">
+              {speedDistribution.sub50.count} questions
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#0D1219] border border-[#202833]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-purple-400">🧠 Methodical</span>
+              <span className="text-[10px] text-[#8B95A5] font-math">&gt; 5.0s</span>
+            </div>
+            <div className="text-xl font-bold font-math text-[#F5F7FA] mt-1">
+              {speedDistribution.over50.pct}%
+            </div>
+            <span className="text-[10px] text-[#8B95A5] font-math">
+              {speedDistribution.over50.count} questions
+            </span>
+          </div>
         </div>
       </div>
 

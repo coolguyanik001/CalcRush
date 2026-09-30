@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { LEVEL_DEFINITIONS } from '../engine/generator';
 import { generateTrainingRecommendations } from '../engine/recommendations';
 import {
@@ -10,6 +10,7 @@ import {
   SessionSummary,
   TrainingRecommendation,
   UserProfile,
+  SyncStatus,
 } from '../types';
 import { soundEngine } from '../utils/audio';
 import {
@@ -17,6 +18,7 @@ import {
   INITIAL_ACHIEVEMENTS,
   storage,
 } from '../utils/storage';
+import { authService } from '../services/authService';
 
 export interface ModeStats {
   accuracy: number;
@@ -81,8 +83,8 @@ interface AppContextType {
   recommendations: TrainingRecommendation[];
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  authModalMode: 'welcome' | 'signup' | 'signin' | 'guest' | 'save_progress';
-  setAuthModalMode: (mode: 'welcome' | 'signup' | 'signin' | 'guest' | 'save_progress') => void;
+  authModalMode: 'welcome' | 'signup' | 'signin' | 'guest' | 'verify_email' | 'forgot_password' | 'reset_password' | 'save_progress';
+  setAuthModalMode: (mode: 'welcome' | 'signup' | 'signin' | 'guest' | 'verify_email' | 'forgot_password' | 'reset_password' | 'save_progress') => void;
   isSaveProgressModalOpen: boolean;
   setIsSaveProgressModalOpen: (open: boolean) => void;
   isMistakeBankModalOpen: boolean;
@@ -91,13 +93,23 @@ interface AppContextType {
   setIsChangelogModalOpen: (open: boolean) => void;
   isDownloadModalOpen: boolean;
   setIsDownloadModalOpen: (open: boolean) => void;
+  isSupportModalOpen: boolean;
+  setIsSupportModalOpen: (open: boolean) => void;
+  dismissSupportModal: (mode: 'snooze' | 'permanent') => void;
   isUpdateBannerVisible: boolean;
   dismissUpdateBanner: (mode: 'snooze' | 'permanent') => void;
   newLevelUnlocked: number | null;
   clearNewLevelUnlocked: () => void;
   continueAsGuest: (name: string) => void;
-  createAccount: (name: string, email: string, password: string) => boolean;
-  signIn: (email: string, password: string) => boolean;
+  handleAccountRegistered: (serverUser: any, token: string) => void;
+  handleAccountSignedIn: (serverUser: any, token: string) => void;
+  handleEmailVerified: () => void;
+  changePassword: (oldPass: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
+  updateProfileName: (name: string) => Promise<{ success: boolean; error?: string }>;
+  syncStatus: SyncStatus;
+  lastSyncedAt: number | null;
+  syncNow: () => Promise<void>;
   signOut: () => void;
   updateUser: (updates: Partial<UserProfile>) => void;
   solveMistake: (id: string) => void;
@@ -107,21 +119,6 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
-
-// Synchronous, secure hash function for local storage accounts that works in all browser environments (HTTP, HTTPS, iframe)
-function hashPassword(password: string): string {
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
-  const str = password + '_calcrush_salt_2026';
-  for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
-}
 
 function getTodayDateString(): string {
   const d = new Date();
@@ -212,14 +209,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lastSessionSummary, setLastSessionSummary] = useState<SessionSummary | null>(null);
 
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() => storage.getLastSync());
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<
-    'welcome' | 'signup' | 'signin' | 'guest' | 'save_progress'
+    'welcome' | 'signup' | 'signin' | 'guest' | 'verify_email' | 'forgot_password' | 'reset_password' | 'save_progress'
   >(() => (storage.getUser() ? 'signup' : 'welcome'));
   const [isSaveProgressModalOpen, setIsSaveProgressModalOpen] = useState<boolean>(false);
   const [isMistakeBankModalOpen, setIsMistakeBankModalOpen] = useState<boolean>(false);
   const [isChangelogModalOpen, setIsChangelogModalOpen] = useState<boolean>(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState<boolean>(false);
+
   const [isUpdateBannerVisible, setIsUpdateBannerVisible] = useState<boolean>(() => {
     const pref = storage.getDownloadPromptPref();
     if (pref.dontShowAgain) return false;
@@ -236,13 +238,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsUpdateBannerVisible(false);
   };
 
+  const dismissSupportModal = (mode: 'snooze' | 'permanent') => {
+    if (mode === 'snooze') {
+      storage.setSupportPromptPref({ remindAfter: Date.now() + 3 * 24 * 60 * 60 * 1000 });
+    } else {
+      storage.setSupportPromptPref({ dontShowAgain: true });
+    }
+    setIsSupportModalOpen(false);
+  };
+
   const [newLevelUnlocked, setNewLevelUnlocked] = useState<number | null>(null);
 
   // Monitor online status
   useEffect(() => {
     setIsOnline(navigator.onLine);
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSyncStatus('synced');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setSyncStatus('offline');
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
@@ -251,7 +268,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Save changes to storage
+  // Sync state to local storage
   useEffect(() => {
     if (user) {
       storage.saveUser(user);
@@ -286,12 +303,108 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storage.saveCustomLevels(savedCustomLevels);
   }, [savedCustomLevels]);
 
+  // Push cloud sync helper
+  const performCloudPush = useCallback(
+    async (token: string, currentUser: UserProfile | null) => {
+      if (!navigator.onLine) {
+        setSyncStatus('offline');
+        return;
+      }
+      setSyncStatus('syncing');
+      try {
+        const payload = {
+          userProfile: currentUser,
+          competitiveSessions,
+          practiceSessions,
+          mistakes,
+          achievements,
+          bonusRecords,
+          dailyRecords,
+          savedCustomLevels,
+        };
+        const res = await authService.pushSync(token, payload);
+        if (res.success && res.lastSyncedAt) {
+          setSyncStatus('synced');
+          setLastSyncedAt(res.lastSyncedAt);
+          storage.setLastSync(res.lastSyncedAt);
+        } else {
+          setSyncStatus('error');
+        }
+      } catch {
+        setSyncStatus('error');
+      }
+    },
+    [
+      competitiveSessions,
+      practiceSessions,
+      mistakes,
+      achievements,
+      bonusRecords,
+      dailyRecords,
+      savedCustomLevels,
+    ]
+  );
+
+  // Manual "Sync Now" button trigger
+  const syncNow = async () => {
+    const token = storage.getAuthToken() || user?.token;
+    if (!token || user?.isGuest) {
+      // For guest, local is already persisted
+      setSyncStatus('synced');
+      return;
+    }
+
+    if (!navigator.onLine) {
+      setSyncStatus('offline');
+      return;
+    }
+
+    setSyncStatus('syncing');
+    try {
+      // Push local data to cloud
+      const payload = {
+        userProfile: user,
+        competitiveSessions,
+        practiceSessions,
+        mistakes,
+        achievements,
+        bonusRecords,
+        dailyRecords,
+        savedCustomLevels,
+      };
+      const pushRes = await authService.pushSync(token, payload);
+      if (pushRes.success) {
+        if (pushRes.lastSyncedAt) {
+          setLastSyncedAt(pushRes.lastSyncedAt);
+          storage.setLastSync(pushRes.lastSyncedAt);
+        }
+        // Pull latest merged data
+        const pullRes = await authService.pullSync(token);
+        if (pullRes.success && pullRes.data) {
+          const d = pullRes.data;
+          if (d.userProfile) setUser((prev) => ({ ...prev, ...d.userProfile, token }));
+          if (d.competitiveSessions) setCompetitiveSessions(d.competitiveSessions);
+          if (d.practiceSessions) setPracticeSessions(d.practiceSessions);
+          if (d.mistakes) setMistakes(d.mistakes);
+          if (d.achievements) setAchievements(d.achievements);
+          if (d.bonusRecords) setBonusRecords(d.bonusRecords);
+          if (d.dailyRecords) setDailyRecords(d.dailyRecords);
+          if (d.savedCustomLevels) setSavedCustomLevels(d.savedCustomLevels);
+        }
+        setSyncStatus('synced');
+      } else {
+        setSyncStatus('error');
+      }
+    } catch {
+      setSyncStatus('error');
+    }
+  };
+
   // Check if a level is unlocked
   const isLevelUnlocked = (targetLevel: number): boolean => {
     if (targetLevel <= 1) return true;
     if (user && user.competitiveLevel >= targetLevel) return true;
 
-    // Check requirement for targetLevel - 1
     const prevDef = LEVEL_DEFINITIONS.find((l) => l.level === targetLevel - 1);
     if (!prevDef) return false;
 
@@ -303,7 +416,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return qualifying.length >= prevDef.requirements.minSessions;
   };
 
-  // Get exact progress toward unlocking level (Fix 11: both accuracy AND speed must be satisfied in the same session)
+  // Get exact progress toward unlocking level
   const getLevelProgress = (targetLevel: number) => {
     if (targetLevel <= 1) {
       return {
@@ -325,7 +438,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetTime = prevDef?.requirements.maxAvgTime || 6.0;
     const targetSessions = prevDef?.requirements.minSessions || 2;
 
-    // A session is qualifying ONLY if BOTH accuracy and average time meet the target in the SAME session!
     const qualifyingSessions = prevSessions.filter(
       (s) => s.accuracy >= targetAccuracy && s.averageTime <= targetTime
     );
@@ -349,7 +461,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  // Fix 6: Calculate Separated Competitive vs Practice vs Overall Metrics
   const compMetrics = calculateMetricsForSessions(competitiveSessions);
   const pracMetrics = calculateMetricsForSessions(practiceSessions);
   const overallMetrics = calculateMetricsForSessions([...competitiveSessions, ...practiceSessions]);
@@ -364,7 +475,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     all: overallMetrics.categoryMap,
   };
 
-  // Weak area detection based on competitive or overall accuracy
   let weakArea: { category: string; accuracy: number } | null = null;
   let lowestAcc = 100;
   Object.entries(overallMetrics.categoryMap).forEach(([cat, data]) => {
@@ -374,7 +484,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Daily training questions solved today
   const todayStart = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -414,7 +523,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, [user, competitiveSessions, mistakes, weakArea, questionsToday, currentDailyGoal, nextReqProgress]);
 
-  // Calculate Chess-style Elo Rating Change
   const calculateRatingDelta = (
     currentRating: number,
     level: number,
@@ -521,7 +629,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPracticeSessions((prev) => [summary, ...prev]);
     }
 
-    // Update saved custom level statistics if playing custom level
     if (config.mode === 'custom' && config.customLevelId) {
       setSavedCustomLevels((prev) =>
         prev.map((lvl) => {
@@ -585,6 +692,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
+    let updatedUser: UserProfile | null = null;
     if (user) {
       let newLevel = user.competitiveLevel;
 
@@ -627,7 +735,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         newDailyStreak = 1;
       }
 
-      const updatedUser: UserProfile = {
+      updatedUser = {
         ...user,
         competitiveLevel: newLevel,
         competitiveRating: ratingAfter,
@@ -643,6 +751,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setUser(updatedUser);
     }
 
+    // Achievements calculation
     setAchievements((prev) => {
       return prev.map((ach) => {
         if (ach.unlockedAt) return ach;
@@ -655,6 +764,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else if (ach.id === 'lightning') {
           const hasFast = results.some((r) => r.isCorrect && r.timeTaken < 1.5);
           if (hasFast) {
+            newProgress = 1;
+            unlocked = true;
+          }
+        } else if (ach.id === 'speed_demon_sub1') {
+          const hasSub1 = results.some((r) => r.isCorrect && r.timeTaken < 1.0);
+          if (hasSub1) {
             newProgress = 1;
             unlocked = true;
           }
@@ -674,6 +789,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else if (ach.id === 'scholar_1000') {
           newProgress = (user?.questionsSolved || 0) + totalQ;
           if (newProgress >= 1000) unlocked = true;
+        } else if (ach.id === 'scholar_5000') {
+          newProgress = (user?.questionsSolved || 0) + totalQ;
+          if (newProgress >= 5000) unlocked = true;
         } else if (ach.id === 'rational_master' && config.level >= 6 && accuracy >= 80) {
           newProgress = 1;
           unlocked = true;
@@ -690,6 +808,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else if (ach.id === 'flawless_50') {
           newProgress = Math.max(ach.progress, sessionBestStreak);
           if (newProgress >= 50) unlocked = true;
+        } else if (ach.id === 'century_streak') {
+          newProgress = Math.max(ach.progress, sessionBestStreak);
+          if (newProgress >= 100) unlocked = true;
         } else if (ach.id === 'mathlete') {
           newProgress = Math.max(ach.progress, ratingAfter);
           if (ratingAfter >= 1200) unlocked = true;
@@ -705,6 +826,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setLastSessionSummary(summary);
     setActiveSession(null);
+
+    // Auto cloud sync if user is authenticated
+    const token = storage.getAuthToken() || user?.token;
+    if (token && !user?.isGuest) {
+      performCloudPush(token, updatedUser);
+    }
+
+    // Support prompt check (NEVER interrupts active gameplay, only triggers on session completion)
+    const totalSessions = competitiveSessions.length + practiceSessions.length + 1;
+    const supportPref = storage.getSupportPromptPref();
+    if (
+      !supportPref.dontShowAgain &&
+      (!supportPref.remindAfter || Date.now() >= supportPref.remindAfter) &&
+      (totalSessions === 3 || totalSessions === 10 || totalSessions % 20 === 0)
+    ) {
+      setTimeout(() => {
+        setIsSupportModalOpen(true);
+      }, 1000);
+    }
+
     return summary;
   };
 
@@ -746,80 +887,140 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setUser(newUser);
     storage.saveUser(newUser);
+    storage.setAuthToken(null);
   };
 
-  const createAccount = (name: string, email: string, password: string): boolean => {
-    const sanitizedEmail = email.toLowerCase().trim();
-    const accounts = storage.getRegisteredAccounts();
-    if (accounts[sanitizedEmail]) {
-      return false;
-    }
-
+  // Called when account is registered
+  const handleAccountRegistered = (serverUser: any, token: string) => {
+    storage.setAuthToken(token);
     const baseProfile = user || DEFAULT_USER;
     const accountUser: UserProfile = {
       ...baseProfile,
-      id: 'usr_' + Math.random().toString(36).substring(2, 9),
+      id: serverUser.id,
+      name: serverUser.name,
+      email: serverUser.email,
       isGuest: false,
-      name: name.trim(),
-      email: sanitizedEmail,
-      username: sanitizedEmail.split('@')[0],
-      createdAt: baseProfile.createdAt || Date.now(),
+      isEmailVerified: serverUser.isEmailVerified,
+      isGoogleConnected: serverUser.isGoogleConnected,
+      createdAt: serverUser.createdAt,
+      token,
     };
-
-    const hashed = hashPassword(password);
-    storage.saveRegisteredAccount(sanitizedEmail, hashed, accountUser, {
-      competitiveSessions,
-      practiceSessions,
-      mistakes,
-      achievements,
-      bonusRecords,
-      dailyRecords,
-      savedCustomLevels,
-    });
-
     setUser(accountUser);
     storage.saveUser(accountUser);
-    return true;
+
+    // Push initial local migration data to cloud
+    performCloudPush(token, accountUser);
+
+    // Unlock cloud_sync achievement
+    setAchievements((prev) =>
+      prev.map((a) => (a.id === 'cloud_sync' ? { ...a, progress: 1, unlockedAt: a.unlockedAt || Date.now() } : a))
+    );
   };
 
-  const signIn = (email: string, password: string): boolean => {
-    const sanitizedEmail = email.toLowerCase().trim();
-    const accounts = storage.getRegisteredAccounts();
-    const account = accounts[sanitizedEmail];
-
-    if (!account) {
-      return false;
-    }
-
-    const hashed = hashPassword(password);
-    if (account.passwordHash !== hashed) {
-      return false;
-    }
-
-    setUser(account.userData);
-    storage.saveUser(account.userData);
-    const savedData = account.allData as {
-      competitiveSessions?: SessionSummary[];
-      practiceSessions?: SessionSummary[];
-      mistakes?: MistakeRecord[];
-      achievements?: Achievement[];
-      bonusRecords?: Record<string, { bestStreak: number; bestScore: number; bestAvgTime: number }>;
-      dailyRecords?: Record<string, { completed: boolean; score: number; accuracy: number; avgTime: number }>;
-      savedCustomLevels?: SavedCustomLevel[];
+  // Called when account is signed in
+  const handleAccountSignedIn = async (serverUser: any, token: string) => {
+    storage.setAuthToken(token);
+    const baseProfile = user || DEFAULT_USER;
+    const accountUser: UserProfile = {
+      ...baseProfile,
+      id: serverUser.id,
+      name: serverUser.name,
+      email: serverUser.email,
+      isGuest: false,
+      isEmailVerified: serverUser.isEmailVerified,
+      isGoogleConnected: serverUser.isGoogleConnected,
+      createdAt: serverUser.createdAt,
+      token,
     };
-    if (savedData?.competitiveSessions) setCompetitiveSessions(savedData.competitiveSessions);
-    if (savedData?.practiceSessions) setPracticeSessions(savedData.practiceSessions);
-    if (savedData?.mistakes) setMistakes(savedData.mistakes);
-    if (savedData?.achievements) setAchievements(savedData.achievements);
-    if (savedData?.bonusRecords) setBonusRecords(savedData.bonusRecords);
-    if (savedData?.dailyRecords) setDailyRecords(savedData.dailyRecords);
-    if (savedData?.savedCustomLevels) setSavedCustomLevels(savedData.savedCustomLevels);
+    setUser(accountUser);
+    storage.saveUser(accountUser);
 
-    return true;
+    // Pull cloud data
+    setSyncStatus('syncing');
+    try {
+      const pullRes = await authService.pullSync(token);
+      if (pullRes.success && pullRes.data) {
+        const d = pullRes.data;
+        if (d.userProfile) setUser((prev) => ({ ...prev, ...d.userProfile, token }));
+        if (d.competitiveSessions) setCompetitiveSessions(d.competitiveSessions);
+        if (d.practiceSessions) setPracticeSessions(d.practiceSessions);
+        if (d.mistakes) setMistakes(d.mistakes);
+        if (d.achievements) setAchievements(d.achievements);
+        if (d.bonusRecords) setBonusRecords(d.bonusRecords);
+        if (d.dailyRecords) setDailyRecords(d.dailyRecords);
+        if (d.savedCustomLevels) setSavedCustomLevels(d.savedCustomLevels);
+        if (pullRes.lastSyncedAt) {
+          setLastSyncedAt(pullRes.lastSyncedAt);
+          storage.setLastSync(pullRes.lastSyncedAt);
+        }
+      }
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus('error');
+    }
+
+    // Unlock cloud_sync achievement
+    setAchievements((prev) =>
+      prev.map((a) => (a.id === 'cloud_sync' ? { ...a, progress: 1, unlockedAt: a.unlockedAt || Date.now() } : a))
+    );
   };
 
-  // Fix 12: Clear previous user state upon sign-out completely
+  // Called when email is verified
+  const handleEmailVerified = () => {
+    if (user) {
+      const updated = { ...user, isEmailVerified: true };
+      setUser(updated);
+      storage.saveUser(updated);
+    }
+    // Unlock verified_mind achievement
+    setAchievements((prev) =>
+      prev.map((a) =>
+        a.id === 'verified_mind' ? { ...a, progress: 1, unlockedAt: a.unlockedAt || Date.now() } : a
+      )
+    );
+  };
+
+  // Change password
+  const changePassword = async (oldPass: string, newPass: string) => {
+    const token = storage.getAuthToken() || user?.token;
+    if (!token) return { success: false, error: 'Not authenticated.' };
+    return await authService.changePassword(token, oldPass, newPass);
+  };
+
+  // Delete account
+  const deleteAccount = async () => {
+    const token = storage.getAuthToken() || user?.token;
+    if (token) {
+      await authService.deleteAccount(token);
+    }
+    signOut();
+    return { success: true };
+  };
+
+  // Update profile name
+  const updateProfileName = async (name: string) => {
+    if (!user) return { success: false, error: 'No user profile found.' };
+    const updated = { ...user, name: name.trim() };
+    setUser(updated);
+    storage.saveUser(updated);
+
+    const token = storage.getAuthToken() || user?.token;
+    if (token && !user.isGuest) {
+      await authService.updateProfile(token, name.trim());
+    }
+    return { success: true };
+  };
+
   const signOut = () => {
+    const token = storage.getAuthToken();
+    if (token) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+
+    storage.setAuthToken(null);
     const guestUser: UserProfile = {
       ...DEFAULT_USER,
       id: 'guest_' + Math.random().toString(36).substring(2, 9),
@@ -845,6 +1046,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storage.saveBonusRecords({});
     storage.saveDailyRecords({});
     storage.saveCustomLevels([]);
+    setSyncStatus('synced');
   };
 
   const updateUser = (updates: Partial<UserProfile>) => {
@@ -863,7 +1065,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       achievements,
       bonusRecords,
       dailyRecords,
+      savedCustomLevels,
       exportedAt: new Date().toISOString(),
+      appVersion: '1.5.0',
     };
     const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -876,6 +1080,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetAllProgress = () => {
     storage.clearAllData();
+    storage.setAuthToken(null);
     const freshUser: UserProfile = {
       ...DEFAULT_USER,
       id: 'guest_' + Math.random().toString(36).substring(2, 9),
@@ -905,6 +1110,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [level, ...prev];
     });
+
+    // Unlock Level Architect achievement
+    setAchievements((prev) =>
+      prev.map((a) =>
+        a.id === 'architect' ? { ...a, progress: 1, unlockedAt: a.unlockedAt || Date.now() } : a
+      )
+    );
+
+    // Auto sync custom level to cloud
+    const token = storage.getAuthToken() || user?.token;
+    if (token && !user?.isGuest) {
+      performCloudPush(token, user);
+    }
   };
 
   const deleteCustomLevel = (id: string) => {
@@ -963,13 +1181,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsChangelogModalOpen,
         isDownloadModalOpen,
         setIsDownloadModalOpen,
+        isSupportModalOpen,
+        setIsSupportModalOpen,
+        dismissSupportModal,
         isUpdateBannerVisible,
         dismissUpdateBanner,
         newLevelUnlocked,
         clearNewLevelUnlocked,
         continueAsGuest,
-        createAccount,
-        signIn,
+        handleAccountRegistered,
+        handleAccountSignedIn,
+        handleEmailVerified,
+        changePassword,
+        deleteAccount,
+        updateProfileName,
+        syncStatus,
+        lastSyncedAt,
+        syncNow,
         signOut,
         updateUser,
         solveMistake,

@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 const ROOT_DIR = process.cwd();
 const RELEASES_DIR = path.join(ROOT_DIR, 'releases');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
-const VERSION = '1.4.1';
+const VERSION = '1.5.0';
 
 console.log(`📦 Building CalcRush v${VERSION} Multi-Platform Distribution Artifacts...`);
 

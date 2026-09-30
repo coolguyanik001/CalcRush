@@ -9,14 +9,43 @@ export interface ChangelogItem {
   bugFixes: string[];
 }
 
-export const CURRENT_VERSION = '1.4.1';
+export const CURRENT_VERSION = '1.5.0';
 
 export const CHANGELOG_DATA: ChangelogItem[] = [
+  {
+    version: '1.5.0',
+    date: 'September 2026',
+    title: 'Account System + Google Login + Email Verification + Support',
+    badge: 'Latest Release',
+    summary:
+      'Major Feature, Security, and Reliability update introducing full-stack account authentication, Google Sign-In with OAuth verification, email verification with expiring 6-digit OTP codes, password recovery, seamless Guest-to-Account progress migration, cross-device cloud synchronization, optional Buy Me a Coffee support system by SENSHIN, achievements expansion, and comprehensive security hardening.',
+    newFeatures: [
+      'Account System & Persistent Sessions: Secure account creation with name, email, password, and session token persistence across app reloads.',
+      'Google Sign-In: OAuth integration with honest availability status reporting and secure ID token verification.',
+      'Email Verification (OTP): 6-digit expiring verification code with resend countdown timer, attempt limits, and clear service configuration status.',
+      'Password Recovery: Secure password reset flow using expiring reset tokens and confirmation.',
+      'Guest → Account Migration: Effortless one-click migration of local Elo rating, level unlocks, mistake bank, achievements, and statistics without data loss.',
+      'Cross-Device Cloud Synchronization: Synchronizes ratings, levels, history, mistakes, bonus records, and custom levels with live status indicators (Synced, Syncing, Sync Error, Offline).',
+      'Buy Me a Coffee Support: Optional external developer support link for creator SENSHIN (buymeacoffee.com/senshin) with polite, non-intrusive session-completion prompts.',
+      'Achievements Expansion: 20 comprehensive milestone badges spanning calculation speed, accuracy streaks, volume, cloud sync, and AI level creation.',
+    ],
+    improvements: [
+      'Five-Section Profile: Dedicated sections for Account, Sync, Security, Support, and Application.',
+      'AI Level Maker Tuning: Real-time blueprint parameter sliders for question count, difficulty, and target pace, plus JSON level import/export.',
+      'Offline Resilience: Guest Mode and core arithmetic training remain 100% functional without internet connection.',
+      'Data Isolation & RBAC: Strict user token authorization ensuring authenticated users can only access and synchronize their own training data.',
+    ],
+    bugFixes: [
+      'Eliminated potential data collisions during multi-device synchronization with deterministic session union and highest-metric resolution.',
+      'Enforced password complexity and matching validation before registration submission.',
+      'Prevented support and update modal prompts from interrupting active calculation gameplay.',
+      'Fixed profile name updating to persist immediately to both local storage and cloud profile.',
+    ],
+  },
   {
     version: '1.4.1',
     date: 'September 2026',
     title: 'Multi-Platform Release Hotfix & Binary Validation',
-    badge: 'Latest Release',
     summary:
       'Stabilization hotfix replacing invalid placeholder releases with genuine compiled native binaries for Windows and Linux, updating SHA-256 integrity checksums, and accurately designating installable mobile and desktop PWA capabilities.',
     newFeatures: [

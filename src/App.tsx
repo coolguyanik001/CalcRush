@@ -18,6 +18,7 @@ import { MistakeBankModal } from './components/MistakeBankModal';
 import { AILevelMakerView } from './components/AILevelMakerView';
 import { DownloadModal } from './components/DownloadModal';
 import { ChangelogModal } from './components/ChangelogModal';
+import { SupportModal } from './components/SupportModal';
 import { UpdateBanner } from './components/UpdateBanner';
 import { QuestionResult } from './types';
 
@@ -92,6 +93,7 @@ const MainAppContent: React.FC = () => {
       <MistakeBankModal />
       <DownloadModal />
       <ChangelogModal />
+      <SupportModal />
     </div>
   );
 };

@@ -246,6 +246,115 @@ assert(6.01 > req.maxAvgTime, '6.01s is not qualifying');
 assert(6.0 <= req.maxAvgTime, '6.00s is qualifying');
 assert(5.99 <= req.maxAvgTime, '5.99s is qualifying');
 
+// 5. AUTHENTICATION, OTP, CLOUD SYNC & SECURITY AUDIT
+console.log('\n--- 5. Testing Authentication, Email Verification OTP, Cloud Sync & Security ---');
+import { authStore } from './server/store';
+
+// Test Registration & Hashing
+const testEmail = `test_audit_${Date.now()}@calcrush.internal`;
+const regResult = authStore.registerUser('Audit Tester', testEmail, 'SuperSecret123!');
+assert(regResult.user.id.startsWith('usr_'), 'User ID has usr_ prefix');
+assert(regResult.user.isEmailVerified === false, 'User starts unverified');
+assert(regResult.user.passwordHash !== 'SuperSecret123!', 'Password is cryptographically hashed');
+assert(Boolean(regResult.verificationCode), '6-digit OTP code generated on registration');
+assert(regResult.verificationCode.length === 6, 'Verification code is 6 digits');
+
+// Test Duplicate Email Protection
+let dupFailed = false;
+try {
+  authStore.registerUser('Duplicate', testEmail, 'Password123!');
+} catch (e: any) {
+  dupFailed = true;
+}
+assert(dupFailed, 'Duplicate email registration rejected');
+
+// Test Login with Good & Bad Credentials
+const authGood = authStore.authenticate(testEmail, 'SuperSecret123!');
+assert(Boolean(authGood.token), 'Valid login issues session token');
+let badAuthFailed = false;
+try {
+  authStore.authenticate(testEmail, 'WrongPassword!');
+} catch {
+  badAuthFailed = true;
+}
+assert(badAuthFailed, 'Bad password correctly rejected');
+
+// Test Invalid Verification Code
+let invalidOtpFailed = false;
+try {
+  authStore.verifyEmail(testEmail, '000000');
+} catch {
+  invalidOtpFailed = true;
+}
+assert(invalidOtpFailed, 'Invalid 6-digit verification code rejected');
+
+// Test Valid Verification Code
+const verifyResult = authStore.verifyEmail(testEmail, regResult.verificationCode);
+assert(verifyResult.success === true, 'Valid code verifies email');
+assert(verifyResult.user.isEmailVerified === true, 'Email marked as verified in store');
+
+// Test Resend Verification Code when already verified
+let resendWhenVerifiedFailed = false;
+try {
+  authStore.resendVerificationCode(testEmail);
+} catch {
+  resendWhenVerifiedFailed = true;
+}
+assert(resendWhenVerifiedFailed, 'Cannot request OTP if already verified');
+
+// Test Password Recovery Request
+const forgotRes = authStore.requestPasswordReset(testEmail);
+assert(Boolean(forgotRes.code), 'Password reset code generated');
+assert(forgotRes.code?.length === 6, 'Reset code is 6 digits');
+
+// Test Password Reset Execution
+const resetSuccess = authStore.resetPassword(testEmail, forgotRes.code!, 'NewSecret456!');
+assert(resetSuccess === true, 'Password reset successful');
+
+// Test Login with New Password
+const authNewPass = authStore.authenticate(testEmail, 'NewSecret456!');
+assert(Boolean(authNewPass.token), 'Can sign in with new password');
+
+// Test Cloud Synchronization & Data Merging
+const sampleSyncPayload = {
+  userProfile: { competitiveRating: 1250, competitiveLevel: 4 },
+  competitiveSessions: [
+    { id: 's1', totalQuestions: 20, correctCount: 19, accuracy: 95, averageTime: 3.2, date: Date.now() - 1000 },
+  ],
+  practiceSessions: [],
+  mistakes: [{ id: 'm1', userAnswer: '12', timestamp: Date.now(), solvedCount: 0 }],
+  achievements: [{ id: 'first_calc', progress: 1, maxProgress: 1, unlockedAt: Date.now() }],
+  bonusRecords: { B1: { bestStreak: 15, bestScore: 15, bestAvgTime: 2.1 } },
+  dailyRecords: {},
+  savedCustomLevels: [],
+};
+
+const pushedData = authStore.pushCloudData(regResult.user.id, sampleSyncPayload);
+assert(pushedData.competitiveSessions.length === 1, 'Cloud sync pushed 1 session');
+assert(pushedData.lastSyncedAt > 0, 'Cloud sync records lastSyncedAt timestamp');
+
+// Test Cloud Pull
+const pulledData = authStore.pullCloudData(regResult.user.id);
+assert(pulledData !== null, 'Pulled cloud data exists');
+assert(pulledData?.competitiveSessions[0].id === 's1', 'Pulled session matches pushed session');
+
+// Test Merge Conflict Resolution: Union without loss
+const secondSyncPayload = {
+  competitiveSessions: [
+    { id: 's2', totalQuestions: 20, correctCount: 20, accuracy: 100, averageTime: 2.5, date: Date.now() },
+  ],
+  achievements: [{ id: 'lightning', progress: 1, maxProgress: 1, unlockedAt: Date.now() }],
+};
+const mergedData = authStore.pushCloudData(regResult.user.id, secondSyncPayload as any);
+assert(mergedData.competitiveSessions.length === 2, 'Sessions safely unioned (2 sessions total)');
+assert(mergedData.achievements.length === 2, 'Achievements safely merged (both first_calc and lightning present)');
+
+// Test Account Deletion
+const deleted = authStore.deleteUser(regResult.user.id);
+assert(deleted === true, 'User deleted');
+assert(authStore.getUserByEmail(testEmail) === null, 'Deleted user cannot be retrieved by email');
+assert(authStore.pullCloudData(regResult.user.id) === null, 'Deleted user cloud data purged');
+
 console.log('\n=== AUDIT RESULTS SUMMARY ===');
 console.log(`Total assertions: ${totalTests}`);
 console.log(`Passed: ${passedTests}`);

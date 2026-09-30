@@ -143,6 +143,8 @@ export interface Achievement {
   maxProgress: number;
 }
 
+export type SyncStatus = 'synced' | 'syncing' | 'error' | 'offline';
+
 export interface UserProfile {
   id: string;
   isGuest: boolean;
@@ -163,6 +165,10 @@ export interface UserProfile {
   dailyGoal: number; // Daily target questions (default 50, customizable 20, 50, 100)
   dailyStreak: number; // Consecutive active days
   lastActiveDate?: string; // YYYY-MM-DD
+  isEmailVerified?: boolean;
+  isGoogleConnected?: boolean;
+  lastSyncedAt?: number;
+  token?: string;
 }
 
 export interface TrainingRecommendation {

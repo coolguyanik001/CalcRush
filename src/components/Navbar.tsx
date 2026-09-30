@@ -26,6 +26,7 @@ export const Navbar: React.FC = () => {
     setActiveView,
     activeSession,
     isOnline,
+    syncStatus,
     updateUser,
     setIsAuthModalOpen,
     setAuthModalMode,
@@ -177,10 +178,28 @@ export const Navbar: React.FC = () => {
                 ) : (
                   <div
                     className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#111720] border border-[#202833] text-[#8B95A5]"
-                    title="Account Synced"
+                    title={`Cloud Status: ${syncStatus}`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
-                    <span>{isOnline ? 'Synced' : 'Offline'}</span>
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        syncStatus === 'synced'
+                          ? 'bg-emerald-400'
+                          : syncStatus === 'syncing'
+                          ? 'bg-amber-400 animate-pulse'
+                          : syncStatus === 'error'
+                          ? 'bg-rose-400'
+                          : 'bg-zinc-500'
+                      }`}
+                    />
+                    <span>
+                      {syncStatus === 'synced'
+                        ? 'Synced'
+                        : syncStatus === 'syncing'
+                        ? 'Syncing'
+                        : syncStatus === 'error'
+                        ? 'Sync Error'
+                        : 'Offline'}
+                    </span>
                   </div>
                 )}
               </>

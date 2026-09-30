@@ -14,7 +14,7 @@ export interface ReleaseArtifact {
 
 export const GITHUB_REPO_URL = 'https://github.com/anik74645/calcrush';
 export const GITHUB_RELEASES_URL = 'https://github.com/anik74645/calcrush/releases';
-export const LATEST_RELEASE_TAG_URL = 'https://github.com/anik74645/calcrush/releases/tag/v1.4.1';
+export const LATEST_RELEASE_TAG_URL = 'https://github.com/anik74645/calcrush/releases/tag/v1.5.0';
 
 export const RELEASE_ARTIFACTS: ReleaseArtifact[] = [
   {
@@ -23,9 +23,9 @@ export const RELEASE_ARTIFACTS: ReleaseArtifact[] = [
     platformName: 'Windows (x64)',
     icon: '🪟',
     badge: 'PE32+ Executable',
-    filename: 'CalcRush-Windows-x64-v1.4.1-Setup.exe',
+    filename: 'CalcRush-Windows-x64-v1.5.0-Setup.exe',
     sizeBytes: 88816640,
-    sha256: '2579d218ed221c35782fedbc38fa889a319c6dd815bef67919a938c1b4bf071e',
+    sha256: '6638985e3bb9d5fc1740fffff139a62315d08326d844e0b39ebcfb1d282a2e8d',
     recommended: true,
     status: 'native',
     instructions: [
@@ -40,9 +40,9 @@ export const RELEASE_ARTIFACTS: ReleaseArtifact[] = [
     platformName: 'Windows (Portable)',
     icon: '🪟',
     badge: 'Standalone PE32+',
-    filename: 'CalcRush-Windows-x64-v1.4.1-Portable.exe',
+    filename: 'CalcRush-Windows-x64-v1.5.0-Portable.exe',
     sizeBytes: 88816640,
-    sha256: 'c43c2c66f647062efe645d3599a222484599c99ac76c5e018655ea4eb089b498',
+    sha256: 'a0640b9303a2d22f94c90f868ca41bbe237182b07d6396055ed574a2372afb36',
     status: 'native',
     instructions: [
       'Download the standalone portable executable.',
@@ -56,14 +56,14 @@ export const RELEASE_ARTIFACTS: ReleaseArtifact[] = [
     platformName: 'Linux (DEB)',
     icon: '🐧',
     badge: 'Debian / Ubuntu Package',
-    filename: 'CalcRush-Linux-x64-v1.4.1.deb',
-    sizeBytes: 163628,
-    sha256: 'e2b0cded854cd6567834930fa0fc4f67ded9071c12e3cb86b3389795beedba67',
+    filename: 'CalcRush-Linux-x64-v1.5.0.deb',
+    sizeBytes: 113480,
+    sha256: '306ef6cd0508bcb911d4118c26b3423c816568ee17483d91284c1b410a6640a1',
     recommended: true,
     status: 'native',
     instructions: [
       'Download the genuine Debian binary package (.deb).',
-      'Install via terminal: sudo dpkg -i CalcRush-Linux-x64-v1.4.1.deb',
+      'Install via terminal: sudo dpkg -i CalcRush-Linux-x64-v1.5.0.deb',
       'Launch from your application menu or run "calcrush" in terminal.',
     ],
   },
@@ -73,14 +73,14 @@ export const RELEASE_ARTIFACTS: ReleaseArtifact[] = [
     platformName: 'Linux (Standalone ELF)',
     icon: '🐧',
     badge: 'ELF 64-bit Executable',
-    filename: 'CalcRush-Linux-x64-v1.4.1.AppImage',
+    filename: 'CalcRush-Linux-x64-v1.5.0.AppImage',
     sizeBytes: 82535624,
-    sha256: 'e6bfb23df53a188bc811592e1c5e43712e883e6e06dcfbbb9e66782d85b04cb6',
+    sha256: '19aab2dc3fae2d21423ca903669d7cab47ea8d4f95e6ab599791d250c652a339',
     status: 'native',
     instructions: [
       'Download the CalcRush Linux x86-64 standalone executable.',
-      'Make it executable: chmod +x CalcRush-Linux-x64-v1.4.1.AppImage',
-      'Run directly: ./CalcRush-Linux-x64-v1.4.1.AppImage',
+      'Make it executable: chmod +x CalcRush-Linux-x64-v1.5.0.AppImage',
+      'Run directly: ./CalcRush-Linux-x64-v1.5.0.AppImage',
     ],
   },
   {

@@ -18,6 +18,9 @@ const STORAGE_KEYS = {
   ACCOUNTS_DB: 'calcrush_accounts_store_v1', // Mock cloud accounts database for multi-account login/migration
   SEEN_VERSION: 'calcrush_seen_version_v1',
   DOWNLOAD_PROMPT: 'calcrush_download_prompt_pref_v1',
+  AUTH_TOKEN: 'calcrush_auth_token_v1',
+  SUPPORT_PROMPT: 'calcrush_support_prompt_pref_v1',
+  LAST_SYNC: 'calcrush_last_sync_v1',
 };
 
 export const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -132,6 +135,54 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
     icon: '🧼',
     progress: 0,
     maxProgress: 10,
+  },
+  {
+    id: 'cloud_sync',
+    title: 'Cross-Device Ascendant',
+    description: 'Connect your account and enable cross-device cloud sync.',
+    icon: '☁️',
+    progress: 0,
+    maxProgress: 1,
+  },
+  {
+    id: 'architect',
+    title: 'Level Architect',
+    description: 'Create and save your first custom level with AI Level Maker.',
+    icon: '🛠️',
+    progress: 0,
+    maxProgress: 1,
+  },
+  {
+    id: 'speed_demon_sub1',
+    title: 'Sub-Second Sorcerer',
+    description: 'Answer any calculation correctly in under 1.0 second.',
+    icon: '⚡',
+    progress: 0,
+    maxProgress: 1,
+  },
+  {
+    id: 'century_streak',
+    title: 'Century Run',
+    description: 'Reach a phenomenal 100-question correct answer streak.',
+    icon: '👑',
+    progress: 0,
+    maxProgress: 100,
+  },
+  {
+    id: 'scholar_5000',
+    title: 'Calculation Grandmaster',
+    description: 'Solve 5,000 calculation questions in your training career.',
+    icon: '🏛️',
+    progress: 0,
+    maxProgress: 5000,
+  },
+  {
+    id: 'verified_mind',
+    title: 'Verified Mind',
+    description: 'Verify your account email address.',
+    icon: '🛡️',
+    progress: 0,
+    maxProgress: 1,
   },
 ];
 
@@ -349,6 +400,62 @@ export const storage = {
       const current = this.getDownloadPromptPref();
       const updated = { ...current, ...pref };
       localStorage.setItem(STORAGE_KEYS.DOWNLOAD_PROMPT, JSON.stringify(updated));
+    } catch {
+      // storage error
+    }
+  },
+
+  getAuthToken(): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    } catch {
+      return null;
+    }
+  },
+
+  setAuthToken(token: string | null) {
+    try {
+      if (token) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      }
+    } catch {
+      // storage error
+    }
+  },
+
+  getSupportPromptPref(): { dontShowAgain: boolean; remindAfter?: number; sessionsCountAtLastPrompt?: number } {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SUPPORT_PROMPT);
+      return data ? JSON.parse(data) : { dontShowAgain: false };
+    } catch {
+      return { dontShowAgain: false };
+    }
+  },
+
+  setSupportPromptPref(pref: { dontShowAgain?: boolean; remindAfter?: number; sessionsCountAtLastPrompt?: number }) {
+    try {
+      const current = this.getSupportPromptPref();
+      const updated = { ...current, ...pref };
+      localStorage.setItem(STORAGE_KEYS.SUPPORT_PROMPT, JSON.stringify(updated));
+    } catch {
+      // storage error
+    }
+  },
+
+  getLastSync(): number | null {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
+      return data ? Number(data) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  setLastSync(timestamp: number) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.LAST_SYNC, String(timestamp));
     } catch {
       // storage error
     }
